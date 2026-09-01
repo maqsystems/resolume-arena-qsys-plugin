@@ -1,0 +1,1 @@
+-- Runtime communication is introduced after the static framework is validated.

@@ -6,7 +6,8 @@ Le projet vise à proposer les fonctions principales de la connexion [Bitfocus C
 
 ## État du projet
 
-Le plugin est en cours de développement. Les premiers travaux ont validé :
+Le plugin est en cours de développement. La version actuelle fournit un framework
+Q-SYS installable avec les pages `Composition` et `Setup`. Les premiers travaux ont validé :
 
 - la connexion à l'API REST et au WebSocket de Resolume ;
 - la réception et le réassemblage des grandes trames WebSocket dans Q-SYS ;
@@ -28,6 +29,30 @@ Le fichier `.qplug` distribuable sera ajouté à la racine du dépôt dès la pr
 Dans Resolume Arena, ouvrir les préférences du Webserver puis activer le serveur REST/WebSocket. Le port par défaut est `8080`.
 
 Le Core Q-SYS doit pouvoir joindre l'adresse IP et le port du poste exécutant Resolume.
+
+## Compilation
+
+Les sources du plugin sont réparties entre les modules Lua situés à la racine. Le
+fichier `plugin.lua` est le point d'entrée assemblé par `PLUGCC.exe`.
+
+Dans Visual Studio Code, exécuter la tâche de build par défaut :
+
+```text
+Build and install ResolumeArena.qplug
+```
+
+La tâche propose l'incrément de `BuildVersion`, génère `ResolumeArena.qplug`, puis
+le copie dans :
+
+```text
+%USERPROFILE%\Documents\QSC\Q-Sys Designer\Plugins\ResolumeArena
+```
+
+Le build peut également être lancé depuis PowerShell :
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\plugincompile\build.ps1 -Increment development
+```
 
 ## Publication
 

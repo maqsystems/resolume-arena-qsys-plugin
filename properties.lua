@@ -1,0 +1,1 @@
+-- Design-time properties will be introduced and validated during milestone M2.

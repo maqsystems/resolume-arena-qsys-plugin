@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build and install ResolumeArena.qplug",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\plugincompile\\build.ps1",
+        "-Increment",
+        "${input:versionIncrement}"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "versionIncrement",
+      "description": "BuildVersion increment",
+      "type": "pickString",
+      "options": [
+        "development",
+        "fix",
+        "minor",
+        "major",
+        "none"
+      ],
+      "default": "development"
+    }
+  ]
+}

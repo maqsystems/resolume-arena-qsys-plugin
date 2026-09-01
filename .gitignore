@@ -4,3 +4,9 @@
 !README.md
 !*.qplug
 !/*.lua
+!/.vscode/
+!/.vscode/tasks.json
+!/plugincompile/
+!/plugincompile/build.ps1
+!/plugincompile/PLUGCC.exe
+!/plugincompile/PLUGCC.exe.config

@@ -1,0 +1,1 @@
+-- Property bounds and relationships will be implemented during milestone M2.
