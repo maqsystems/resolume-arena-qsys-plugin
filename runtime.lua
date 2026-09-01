@@ -29,6 +29,9 @@ local compositionReceived = false
 local initialRefreshRequested = false
 local applyCompositionSnapshot
 local clearCompositionCache
+local synchronizeFeedbackSubscriptions
+local applyParameterFeedback
+local subscribedFeedbackPaths = {}
 
 local function debugEnabled()
   local property = Properties.plugin_show_debug or Properties["Show Debug"]
@@ -199,6 +202,8 @@ local function handleWebSocketMessage(message)
     compositionReceived = true
     initialRefreshRequested = false
     applyCompositionSnapshot(message)
+  elseif message.path and message.value ~= nil and applyParameterFeedback then
+    applyParameterFeedback(message.path, message.value)
   end
 end
 
@@ -260,6 +265,7 @@ ResolumeWebSocket.Error = function(_, errorMessage)
   stopHealthCheck()
   clearReceiveBuffer("WebSocket error")
   setConnectionStatus(2, "WebSocket error: " .. tostring(errorMessage))
+  subscribedFeedbackPaths = {}
   if clearCompositionCache then clearCompositionCache() end
   scheduleReconnect(reconnectDelay)
 end
@@ -270,6 +276,7 @@ ResolumeWebSocket.Closed = function()
   clearReceiveBuffer("WebSocket closed")
   compositionReceived = false
   initialRefreshRequested = false
+  subscribedFeedbackPaths = {}
   if clearCompositionCache then clearCompositionCache() end
 
   if reconnectRequested then
@@ -575,6 +582,145 @@ applyCompositionSnapshot = function(composition)
     math.min(#layers, layerCount),
     #layers
   ))
+
+  if synchronizeFeedbackSubscriptions then
+    synchronizeFeedbackSubscriptions(true)
+  end
+end
+
+local function sendSubscription(action, path)
+  if connectionState ~= "connected" then return end
+  ResolumeWebSocket:Write(json.encode({
+    action = action,
+    parameter = path
+  }))
+end
+
+synchronizeFeedbackSubscriptions = function(force)
+  if connectionState ~= "connected" then return end
+
+  local desired = {}
+  local visibleDecks = math.min(ResolumeCompositionCache.sourceDeckCount, deckCount)
+  local visibleColumns = math.min(ResolumeCompositionCache.sourceColumnCount, columnCount)
+  local visibleLayers = math.min(ResolumeCompositionCache.sourceLayerCount, layerCount)
+
+  for deck = 1, visibleDecks do
+    desired[string.format("/composition/decks/%d/select", deck)] = true
+  end
+  for column = 1, visibleColumns do
+    desired[string.format("/composition/columns/%d/connect", column)] = true
+  end
+  for layer = 1, visibleLayers do
+    desired[string.format("/composition/layers/%d/select", layer)] = true
+    for column = 1, visibleColumns do
+      desired[string.format(
+        "/composition/layers/%d/clips/%d/connect",
+        layer,
+        column
+      )] = true
+    end
+  end
+
+  local obsolete = {}
+  for path in pairs(subscribedFeedbackPaths) do
+    if force or not desired[path] then
+      table.insert(obsolete, path)
+    end
+  end
+  for _, path in ipairs(obsolete) do
+    sendSubscription("unsubscribe", path)
+    subscribedFeedbackPaths[path] = nil
+  end
+
+  local subscriptionCount = 0
+  for path in pairs(desired) do
+    subscriptionCount = subscriptionCount + 1
+    if not subscribedFeedbackPaths[path] then
+      sendSubscription("subscribe", path)
+      subscribedFeedbackPaths[path] = true
+    end
+  end
+
+  debugLog(string.format(
+    "Synchronized %d realtime feedback subscriptions%s",
+    subscriptionCount,
+    force and " (deck/snapshot refresh)" or ""
+  ))
+end
+
+local function booleanFeedback(value)
+  return value == true or value == 1 or value == "true"
+end
+
+applyParameterFeedback = function(path, value)
+  if not subscribedFeedbackPaths[path] then return end
+
+  local deck = tonumber(path:match("^/composition/decks/(%d+)/select$"))
+  if deck then
+    local cached = ResolumeCompositionCache.decks[deck]
+    if not cached then return end
+    local active = booleanFeedback(value)
+    if active then
+      for index, other in pairs(ResolumeCompositionCache.decks) do
+        other.selected = index == deck
+        setToggleState("Deck " .. index, other.name, other.selected, false)
+      end
+    else
+      cached.selected = false
+      setToggleState("Deck " .. deck, cached.name, false, false)
+    end
+    return
+  end
+
+  local column = tonumber(path:match("^/composition/columns/(%d+)/connect$"))
+  if column then
+    local cached = ResolumeCompositionCache.columns[column]
+    if not cached then return end
+    cached.connected = value
+    setToggleState(
+      "Column " .. column,
+      cached.name,
+      connectedStateIsActive(value),
+      false
+    )
+    return
+  end
+
+  local layer = tonumber(path:match("^/composition/layers/(%d+)/select$"))
+  if layer then
+    local cached = ResolumeCompositionCache.layers[layer]
+    if not cached then return end
+    local active = booleanFeedback(value)
+    if active then
+      for index, other in pairs(ResolumeCompositionCache.layers) do
+        other.selected = index == layer
+        setToggleState("Layer " .. index, other.name, other.selected, false)
+      end
+    else
+      cached.selected = false
+      setToggleState("Layer " .. layer, cached.name, false, false)
+    end
+    return
+  end
+
+  local clipLayer, clipColumn = path:match(
+    "^/composition/layers/(%d+)/clips/(%d+)/connect$"
+  )
+  clipLayer = tonumber(clipLayer)
+  clipColumn = tonumber(clipColumn)
+  if not clipLayer or not clipColumn then return end
+
+  local cachedLayer = ResolumeCompositionCache.layers[clipLayer]
+  local cachedClip = cachedLayer and cachedLayer.clips[clipColumn]
+  if not cachedClip then return end
+
+  cachedClip.connected = value
+  setToggleState(
+    string.format("Clip L%d C%d", clipLayer, clipColumn),
+    cachedClip.name,
+    connectedStateIsActive(value),
+    false
+  )
 end
 
 clearCompositionCache()

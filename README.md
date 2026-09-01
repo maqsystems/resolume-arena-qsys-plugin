@@ -48,6 +48,10 @@ Full composition snapshots populate a local cache bounded by the configured deck
 column and layer limits. Missing items are cleared and disabled, and Resolume's
 indexed `#` name placeholders are rendered using their actual item index.
 
+WebSocket subscriptions keep deck selection, column connection, layer selection
+and clip connection states synchronized in real time. Subscriptions are replaced
+after composition snapshots so deck changes cannot leave stale feedback paths.
+
 ## Compilation
 
 Les sources du plugin sont réparties entre les modules Lua situés à la racine. Le
