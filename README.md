@@ -37,6 +37,13 @@ The design-time `Look and Feel` property offers two interface modes:
 - `Resolume` uses the dark Resolume-inspired SVG controls;
 - `Q-SYS` uses native Q-SYS buttons, suitable for copying into custom UCIs.
 
+## Connection lifecycle
+
+The plugin maintains one WebSocket connection to the configured Resolume host
+and reconnects automatically after an interruption. The Setup page reports the
+current connection state. A lightweight request to `/api/v1/product` detects a
+disabled Resolume Webserver without polling composition or parameter state.
+
 ## Compilation
 
 Les sources du plugin sont réparties entre les modules Lua situés à la racine. Le
