@@ -1,6 +1,6 @@
-# Le dépôt public ne contient que les fichiers distribuables.
+# Le dépôt public contient les sources du plugin et les fichiers distribuables.
 *
 !.gitignore
 !README.md
 !*.qplug
-
+!/*.lua

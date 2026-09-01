@@ -31,17 +31,17 @@ Le Core Q-SYS doit pouvoir joindre l'adresse IP et le port du poste exécutant R
 
 ## Publication
 
-Le dépôt public contient uniquement :
+Le dépôt public contient :
 
 - ce README ;
+- les modules Lua placés à la racine et nécessaires à la compilation ;
 - le fichier `.qplug` distribuable ;
 - `.gitignore`.
 
-Les scripts de test, captures, journaux, notes d'ingénierie inverse et autres fichiers sandbox restent locaux et ne sont pas publiés.
+Les scripts de test, captures, journaux, notes d'ingénierie inverse et autres fichiers sandbox restent locaux et ne sont pas publiés. Les fichiers Lua de test placés dans `tests/` restent donc exclus.
 
 ## Sources de référence
 
 - [API REST Resolume Arena & Avenue](https://resolume.com/docs/restapi/)
 - [API WebSocket Resolume](https://www.resolume.com/support/en/websocket-api)
 - [Module Companion Resolume Arena](https://github.com/bitfocus/companion-module-resolume-arena)
-
