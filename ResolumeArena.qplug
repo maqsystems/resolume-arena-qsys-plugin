@@ -3,7 +3,7 @@
 PluginInfo = {
   Name = "Resolume Arena",
   Version = "0.1",
-  BuildVersion = "0.1.0.10",
+  BuildVersion = "0.1.0.12",
   Id = "8de626d8-cede-48af-bb14-b282576cff45",
   Author = "MAQ-SYSTEMS",
   Description = "Control Resolume Arena from a Q-SYS Core"
@@ -389,6 +389,10 @@ if Controls then
   local receivedMessageCount = 0
   local lastStatusMessage = nil
   local healthCheckPending = false
+  local compositionReceived = false
+  local initialRefreshRequested = false
+  local applyCompositionSnapshot
+  local clearCompositionCache
   
   local function debugEnabled()
     local property = Properties.plugin_show_debug or Properties["Show Debug"]
@@ -424,6 +428,17 @@ if Controls then
   end
   
   local connectWebSocket
+  
+  local function requestCompositionState()
+    if connectionState ~= "connected" then return false end
+  
+    ResolumeWebSocket:Write(json.encode({
+      action = "get",
+      parameter = "/composition"
+    }))
+    debugLog("Requested one composition refresh")
+    return true
+  end
   
   local function scheduleReconnect(delay)
     ResolumeReconnectTimer:Stop()
@@ -526,6 +541,9 @@ if Controls then
         end
   
         debugLog("Resolume Webserver health check succeeded")
+        if not compositionReceived and not initialRefreshRequested then
+          initialRefreshRequested = requestCompositionState()
+        end
       end
     })
   end
@@ -538,9 +556,14 @@ if Controls then
   end
   
   local function handleWebSocketMessage(message)
-    -- Composition mapping starts in M5. M4 only validates and counts messages.
     receivedMessageCount = receivedMessageCount + 1
     debugLog(string.format("Received JSON message #%d", receivedMessageCount))
+  
+    if message.columns and message.layers and applyCompositionSnapshot then
+      compositionReceived = true
+      initialRefreshRequested = false
+      applyCompositionSnapshot(message)
+    end
   end
   
   ResolumeReceiveBufferTimer.EventHandler = function()
@@ -551,6 +574,8 @@ if Controls then
     ResolumeReconnectTimer:Stop()
     connectionState = "connected"
     reconnectRequested = false
+    compositionReceived = false
+    initialRefreshRequested = false
     setConnectionStatus(0, string.format("Connected to %s:%d", activeHost, activePort))
     startHealthCheck()
   end
@@ -599,6 +624,7 @@ if Controls then
     stopHealthCheck()
     clearReceiveBuffer("WebSocket error")
     setConnectionStatus(2, "WebSocket error: " .. tostring(errorMessage))
+    if clearCompositionCache then clearCompositionCache() end
     scheduleReconnect(reconnectDelay)
   end
   
@@ -606,6 +632,9 @@ if Controls then
     connectionState = "idle"
     stopHealthCheck()
     clearReceiveBuffer("WebSocket closed")
+    compositionReceived = false
+    initialRefreshRequested = false
+    if clearCompositionCache then clearCompositionCache() end
   
     if reconnectRequested then
       reconnectRequested = false
@@ -644,18 +673,29 @@ if Controls then
       :gsub("'", "&apos;")
   end
   
-  local function renderStaticToggle(control, label, width, height)
-    local active = control.Boolean
+  local resolumeLook = Properties["Look and Feel"].Value == "Resolume"
+  local toggleViews = {}
+  local applyingCacheFeedback = false
+  
+  local function renderToggle(view)
+    local control = view.control
+    local label = view.label
+    if not resolumeLook then
+      control.Legend = label
+      return
+    end
+  
+    local active = view.active
     local background = active and "#80ffd2" or "#191817"
     local foreground = active and "#191817" or "#ffffff"
-    local baseline = math.floor(height / 2 + 4)
+    local baseline = math.floor(view.height / 2 + 4)
   
     local svg = table.concat({
-      '<svg xmlns="http://www.w3.org/2000/svg" width="', width,
-      '" height="', height, '" viewBox="0 0 ', width, ' ', height, '">',
-      '<rect x="1" y="1" width="', width - 2, '" height="', height - 2,
+      '<svg xmlns="http://www.w3.org/2000/svg" width="', view.width,
+      '" height="', view.height, '" viewBox="0 0 ', view.width, ' ', view.height, '">',
+      '<rect x="1" y="1" width="', view.width - 2, '" height="', view.height - 2,
       '" rx="2" fill="', background, '" stroke="#4f4f4f" stroke-width="1"/>',
-      '<text x="', width / 2, '" y="', baseline,
+      '<text x="', view.width / 2, '" y="', baseline,
       '" fill="', foreground,
       '" font-family="Roboto, Arial, sans-serif" font-size="11" text-anchor="middle">',
       escapeXml(label),
@@ -668,43 +708,240 @@ if Controls then
     })
   end
   
-  local function initializeStaticToggle(name, label, width, height)
+  local function initializeToggle(name, label, width, height)
     local control = Controls[name]
     if not control then return end
   
+    local view = {
+      control = control,
+      label = label,
+      active = false,
+      width = width,
+      height = height
+    }
+    toggleViews[name] = view
+  
     control.EventHandler = function()
-      renderStaticToggle(control, label, width, height)
+      if not applyingCacheFeedback then
+        applyingCacheFeedback = true
+        control.Boolean = view.active
+        applyingCacheFeedback = false
+      end
+      renderToggle(view)
     end
-    renderStaticToggle(control, label, width, height)
+    renderToggle(view)
+  end
+  
+  local function setToggleState(name, label, active, disabled)
+    local view = toggleViews[name]
+    if not view then return end
+  
+    view.label = tostring(label or "")
+    view.active = active == true
+    applyingCacheFeedback = true
+    view.control.Boolean = view.active
+    view.control.IsDisabled = disabled == true
+    applyingCacheFeedback = false
+    renderToggle(view)
+  end
+  
+  local function parameterValue(parameter, fallback)
+    if type(parameter) == "table" and parameter.value ~= nil then
+      return parameter.value
+    end
+    if parameter ~= nil and type(parameter) ~= "table" then
+      return parameter
+    end
+    return fallback
+  end
+  
+  local function displayName(item, fallback)
+    local name = parameterValue(item and item.name, "")
+    if name == nil or tostring(name) == "" then return fallback end
+    return tostring(name)
+  end
+  
+  local function indexedDisplayName(item, fallback, index)
+    local name = displayName(item, fallback)
+    return name:gsub("#", tostring(index))
+  end
+  
+  local function connectedStateIsActive(value)
+    return value == "Connected" or value == "Connected & previewing"
   end
   
   local deckCount = Properties["Deck Count"].Value
   local columnCount = Properties["Maximum Column Count"].Value
   local layerCount = Properties["Maximum Layer Count"].Value
-  local resolumeLook = Properties["Look and Feel"].Value == "Resolume"
   
-  if resolumeLook then
+  for deck = 1, deckCount do
+    initializeToggle("Deck " .. deck, "Deck " .. deck, 108, 26)
+  end
+  
+  for column = 1, columnCount do
+    initializeToggle("Column " .. column, "Column " .. column, 108, 30)
+  end
+  
+  for layer = 1, layerCount do
+    initializeToggle("Layer " .. layer, "Layer " .. layer, 94, 74)
+  
+    for column = 1, columnCount do
+      initializeToggle(
+        string.format("Clip L%d C%d", layer, column),
+        string.format("L%d C%d", layer, column),
+        108,
+        74
+      )
+    end
+  end
+  
+  ResolumeCompositionCache = {
+    name = "",
+    sourceDeckCount = 0,
+    sourceColumnCount = 0,
+    sourceLayerCount = 0,
+    decks = {},
+    columns = {},
+    layers = {}
+  }
+  
+  clearCompositionCache = function()
+    ResolumeCompositionCache.name = ""
+    ResolumeCompositionCache.sourceDeckCount = 0
+    ResolumeCompositionCache.sourceColumnCount = 0
+    ResolumeCompositionCache.sourceLayerCount = 0
+  
     for deck = 1, deckCount do
-      initializeStaticToggle("Deck " .. deck, "Deck " .. deck, 108, 26)
+      ResolumeCompositionCache.decks[deck] = nil
+      setToggleState("Deck " .. deck, "", false, true)
     end
   
     for column = 1, columnCount do
-      initializeStaticToggle("Column " .. column, "Column " .. column, 108, 30)
+      ResolumeCompositionCache.columns[column] = nil
+      setToggleState("Column " .. column, "", false, true)
     end
   
     for layer = 1, layerCount do
-      initializeStaticToggle("Layer " .. layer, "Layer " .. layer, 94, 74)
-  
+      ResolumeCompositionCache.layers[layer] = nil
+      setToggleState("Layer " .. layer, "", false, true)
       for column = 1, columnCount do
-        initializeStaticToggle(
-          string.format("Clip L%d C%d", layer, column),
-          string.format("L%d C%d", layer, column),
-          108,
-          74
-        )
+        setToggleState(string.format("Clip L%d C%d", layer, column), "", false, true)
       end
     end
   end
+  
+  applyCompositionSnapshot = function(composition)
+    local decks = type(composition.decks) == "table" and composition.decks or {}
+    local columns = type(composition.columns) == "table" and composition.columns or {}
+    local layers = type(composition.layers) == "table" and composition.layers or {}
+  
+    ResolumeCompositionCache.name = displayName(composition, "")
+    ResolumeCompositionCache.sourceDeckCount = #decks
+    ResolumeCompositionCache.sourceColumnCount = #columns
+    ResolumeCompositionCache.sourceLayerCount = #layers
+  
+    for deck = 1, deckCount do
+      local source = decks[deck]
+      if source then
+        local cached = ResolumeCompositionCache.decks[deck] or {}
+        cached.id = source.id
+        cached.name = indexedDisplayName(source, "Deck " .. deck, deck)
+        cached.selected = parameterValue(source.selected, false) == true
+        ResolumeCompositionCache.decks[deck] = cached
+        setToggleState("Deck " .. deck, cached.name, cached.selected, false)
+      else
+        ResolumeCompositionCache.decks[deck] = nil
+        setToggleState("Deck " .. deck, "", false, true)
+      end
+    end
+  
+    for column = 1, columnCount do
+      local source = columns[column]
+      if source then
+        local cached = ResolumeCompositionCache.columns[column] or {}
+        cached.id = source.id
+        cached.name = indexedDisplayName(source, "Column " .. column, column)
+        cached.connected = parameterValue(source.connected, "Empty")
+        cached.selected = parameterValue(source.selected, false) == true
+        ResolumeCompositionCache.columns[column] = cached
+        setToggleState(
+          "Column " .. column,
+          cached.name,
+          connectedStateIsActive(cached.connected),
+          false
+        )
+      else
+        ResolumeCompositionCache.columns[column] = nil
+        setToggleState("Column " .. column, "", false, true)
+      end
+    end
+  
+    for layer = 1, layerCount do
+      local source = layers[layer]
+      if source then
+        local cached = ResolumeCompositionCache.layers[layer] or { clips = {} }
+        cached.id = source.id
+        cached.name = indexedDisplayName(source, "Layer " .. layer, layer)
+        cached.selected = parameterValue(source.selected, false) == true
+        cached.clips = cached.clips or {}
+        ResolumeCompositionCache.layers[layer] = cached
+        setToggleState("Layer " .. layer, cached.name, cached.selected, false)
+  
+        local clips = type(source.clips) == "table" and source.clips or {}
+        for column = 1, columnCount do
+          local clip = clips[column]
+          local connected = parameterValue(clip and clip.connected, "Empty")
+          local populated = clip ~= nil and connected ~= "Empty"
+  
+          if populated then
+            local cachedClip = cached.clips[column] or {}
+            cachedClip.id = clip.id
+            cachedClip.name = displayName(clip, string.format("L%d C%d", layer, column))
+            cachedClip.connected = connected
+            cached.clips[column] = cachedClip
+            setToggleState(
+              string.format("Clip L%d C%d", layer, column),
+              cachedClip.name,
+              connectedStateIsActive(connected),
+              false
+            )
+          else
+            cached.clips[column] = nil
+            setToggleState(
+              string.format("Clip L%d C%d", layer, column),
+              "",
+              false,
+              true
+            )
+          end
+        end
+      else
+        ResolumeCompositionCache.layers[layer] = nil
+        setToggleState("Layer " .. layer, "", false, true)
+        for column = 1, columnCount do
+          setToggleState(
+            string.format("Clip L%d C%d", layer, column),
+            "",
+            false,
+            true
+          )
+        end
+      end
+    end
+  
+    debugLog(string.format(
+      "Cached composition '%s': %d/%d decks, %d/%d columns, %d/%d layers",
+      ResolumeCompositionCache.name,
+      math.min(#decks, deckCount),
+      #decks,
+      math.min(#columns, columnCount),
+      #columns,
+      math.min(#layers, layerCount),
+      #layers
+    ))
+  end
+  
+  clearCompositionCache()
   
   Timer.CallAfter(connectWebSocket, 0.1)
 end

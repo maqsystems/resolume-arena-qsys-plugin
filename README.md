@@ -44,6 +44,10 @@ and reconnects automatically after an interruption. The Setup page reports the
 current connection state. A lightweight request to `/api/v1/product` detects a
 disabled Resolume Webserver without polling composition or parameter state.
 
+Full composition snapshots populate a local cache bounded by the configured deck,
+column and layer limits. Missing items are cleared and disabled, and Resolume's
+indexed `#` name placeholders are rendered using their actual item index.
+
 ## Compilation
 
 Les sources du plugin sont réparties entre les modules Lua situés à la racine. Le
