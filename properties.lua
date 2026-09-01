@@ -21,3 +21,10 @@ table.insert(props, {
   Max = 16,
   Value = 3
 })
+
+table.insert(props, {
+  Name = "Look and Feel",
+  Type = "enum",
+  Choices = { "Resolume", "Q-SYS" },
+  Value = "Resolume"
+})

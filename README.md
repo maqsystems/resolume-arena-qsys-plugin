@@ -30,6 +30,13 @@ Dans Resolume Arena, ouvrir les préférences du Webserver puis activer le serve
 
 Le Core Q-SYS doit pouvoir joindre l'adresse IP et le port du poste exécutant Resolume.
 
+## Appearance
+
+The design-time `Look and Feel` property offers two interface modes:
+
+- `Resolume` uses the dark Resolume-inspired SVG controls;
+- `Q-SYS` uses native Q-SYS buttons, suitable for copying into custom UCIs.
+
 ## Compilation
 
 Les sources du plugin sont réparties entre les modules Lua situés à la racine. Le

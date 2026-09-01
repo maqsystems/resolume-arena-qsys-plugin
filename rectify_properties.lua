@@ -6,3 +6,8 @@ end
 rectifyIntegerProperty(props["Deck Count"], 1, 16, 4)
 rectifyIntegerProperty(props["Maximum Column Count"], 1, 32, 9)
 rectifyIntegerProperty(props["Maximum Layer Count"], 1, 16, 3)
+
+if props["Look and Feel"].Value ~= "Resolume"
+    and props["Look and Feel"].Value ~= "Q-SYS" then
+  props["Look and Feel"].Value = "Resolume"
+end
