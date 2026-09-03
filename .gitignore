@@ -3,9 +3,11 @@
 !.gitignore
 !README.md
 !CHANGELOG.md
+!LICENSE
 !*.qplug
 !/*.lua
 !/*.svg
+!/image.png
 !/.vscode/
 !/.vscode/tasks.json
 !/plugincompile/

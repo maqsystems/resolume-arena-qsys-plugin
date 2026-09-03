@@ -4,6 +4,8 @@ A Q-SYS Control plugin for operating a Resolume Arena composition from a Q-SYS
 Core. Its single-page interface mirrors the essential Resolume Composition workflow
 while exposing stable control pins for integration into a design or custom UCI.
 
+![Resolume Arena Q-SYS Plugin interface](image.png)
+
 ## Requirements
 
 - Q-SYS Designer 10.4 or later (validated with 10.4.0)
@@ -13,13 +15,8 @@ while exposing stable control pins for integration into a design or custom UCI.
 
 ## Installation
 
-Copy `ResolumeArena.qplug` to the Q-SYS Designer user plugin directory:
-
-```text
-%USERPROFILE%\Documents\QSC\Q-SYS Designer\Plugins\ResolumeArena
-```
-
-Restart Q-SYS Designer or refresh the plugin inventory, then add **Resolume
+Download and open `ResolumeArena.qplug`. Q-SYS Plugin Helper automatically copies
+the plugin to the correct Q-SYS Designer plugin directory. Then add **Resolume
 Arena** from the User Components section.
 
 ## Resolume setup
@@ -29,7 +26,7 @@ Enter the Resolume computer's IP address and configured port in the header of th
 **Composition** page. Its Connection indicator and status text report availability,
 WebSocket state and automatic reconnection.
 
-## Design-time properties
+## Properties
 
 These properties determine the fixed control count and cannot change at runtime:
 
@@ -43,9 +40,7 @@ These properties determine the fixed control count and cannot change at runtime:
 Set the counts to the largest composition the design must support. Controls that
 do not exist in the current Resolume composition are cleared and disabled.
 
-## Composition controls
-
-The **Composition** page and its integrated connection header provide:
+## Controls
 
 - deck selection, column triggering and clip connection with realtime feedback;
 - clip names, thumbnails and active-state outlines;
@@ -82,21 +77,12 @@ requests so partial Resolume snapshots converge without an unbounded request loo
 - The Resolume-inspired SVG appearance may not transfer ideally when controls are
   copied into a custom UCI. Select the **Q-SYS** look for native Q-SYS buttons.
 
-## Building from source
-
-The Lua modules in the repository root are assembled from `plugin.lua` by the
-included Q-SYS plugin compiler. From PowerShell:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\plugincompile\build.ps1 -Increment development
-```
-
-Use `-SkipInstall` to build without copying the result into the Q-SYS Designer
-plugin directory. Use `-Increment none` for a reproducibility build that preserves
-the current `BuildVersion`.
-
 ## References
 
 - [Resolume REST API](https://resolume.com/docs/restapi/)
 - [Resolume WebSocket API](https://www.resolume.com/support/en/websocket-api)
 - [Bitfocus Companion Resolume module](https://github.com/bitfocus/companion-module-resolume-arena)
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
