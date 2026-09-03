@@ -16,6 +16,7 @@ if (-not (Test-Path -LiteralPath $compilerPath)) {
   throw "Compiler not found: $compilerPath"
 }
 
+
 $info = [IO.File]::ReadAllText($infoPath)
 $match = [regex]::Match($info, 'BuildVersion\s*=\s*"(\d+)\.(\d+)\.(\d+)\.(\d+)"')
 if (-not $match.Success) {

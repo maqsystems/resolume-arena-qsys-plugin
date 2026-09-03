@@ -2,8 +2,10 @@
 *
 !.gitignore
 !README.md
+!CHANGELOG.md
 !*.qplug
 !/*.lua
+!/*.svg
 !/.vscode/
 !/.vscode/tasks.json
 !/plugincompile/

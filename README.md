@@ -1,94 +1,102 @@
 # Resolume Arena Q-SYS Plugin
 
-Plugin Q-SYS destiné au pilotage de Resolume Arena depuis un Core Q-SYS.
+A Q-SYS Control plugin for operating a Resolume Arena composition from a Q-SYS
+Core. Its single-page interface mirrors the essential Resolume Composition workflow
+while exposing stable control pins for integration into a design or custom UCI.
 
-Le projet vise à proposer les fonctions principales de la connexion [Bitfocus Companion pour Resolume Arena](https://bitfocus.io/connections/resolume-arena), notamment le contrôle des clips, colonnes, layers, groupes, decks, paramètres et Dashboards, ainsi que leurs feedbacks en temps réel.
+## Requirements
 
-## État du projet
-
-Le plugin est en cours de développement. La version actuelle fournit un framework
-Q-SYS installable avec les pages `Composition` et `Setup`. Les premiers travaux ont validé :
-
-- la connexion à l'API REST et au WebSocket de Resolume ;
-- la réception et le réassemblage des grandes trames WebSocket dans Q-SYS ;
-- l'affichage des thumbnails et des noms de clips ;
-- les feedbacks de sélection en temps réel ;
-- la mise à jour des clips lors d'un changement de deck ;
-- la découverte et le pilotage des Links du Dashboard par identifiant de paramètre.
+- Q-SYS Designer 10.4 or later (validated with 10.4.0)
+- Resolume Arena 7 with its REST/WebSocket Webserver enabled (validated with
+  Arena 7.27.1 rev. 15990)
+- Network access from the Q-SYS Core to the Resolume computer
 
 ## Installation
 
-Le fichier `.qplug` distribuable sera ajouté à la racine du dépôt dès la première version installable. Il pourra alors être copié dans le dossier des plugins utilisateur de Q-SYS Designer :
+Copy `ResolumeArena.qplug` to the Q-SYS Designer user plugin directory:
 
 ```text
-%USERPROFILE%\Documents\QSC\Q-SYS Designer\Plugins
+%USERPROFILE%\Documents\QSC\Q-SYS Designer\Plugins\ResolumeArena
 ```
 
-## Configuration de Resolume
+Restart Q-SYS Designer or refresh the plugin inventory, then add **Resolume
+Arena** from the User Components section.
 
-Dans Resolume Arena, ouvrir les préférences du Webserver puis activer le serveur REST/WebSocket. Le port par défaut est `8080`.
+## Resolume setup
 
-Le Core Q-SYS doit pouvoir joindre l'adresse IP et le port du poste exécutant Resolume.
+Enable the Webserver in Resolume Arena preferences. Its default port is `8080`.
+Enter the Resolume computer's IP address and configured port in the header of the
+**Composition** page. Its Connection indicator and status text report availability,
+WebSocket state and automatic reconnection.
 
-## Appearance
+## Design-time properties
 
-The design-time `Look and Feel` property offers two interface modes:
+These properties determine the fixed control count and cannot change at runtime:
 
-- `Resolume` uses the dark Resolume-inspired SVG controls;
-- `Q-SYS` uses native Q-SYS buttons, suitable for copying into custom UCIs.
+| Property | Range | Default | Purpose |
+| --- | ---: | ---: | --- |
+| Deck Count | 1–16 | 4 | Number of deck buttons |
+| Maximum Column Count | 1–32 | 9 | Maximum visible columns |
+| Maximum Layer Count | 1–16 | 3 | Maximum visible layers |
+| Look and Feel | Resolume / Q-SYS | Resolume | SVG-inspired or native control appearance |
 
-## Connection lifecycle
+Set the counts to the largest composition the design must support. Controls that
+do not exist in the current Resolume composition are cleared and disabled.
 
-The plugin maintains one WebSocket connection to the configured Resolume host
-and reconnects automatically after an interruption. The Setup page reports the
-current connection state. A lightweight request to `/api/v1/product` detects a
-disabled Resolume Webserver without polling composition or parameter state.
+## Composition controls
 
-Full composition snapshots populate a local cache bounded by the configured deck,
-column and layer limits. Missing items are cleared and disabled, and Resolume's
-indexed `#` name placeholders are rendered using their actual item index.
+The **Composition** page and its integrated connection header provide:
 
-WebSocket subscriptions keep deck selection, column connection, layer selection
-and clip connection states synchronized in real time. Subscriptions are replaced
-after composition snapshots so deck changes cannot leave stale feedback paths.
+- deck selection, column triggering and clip connection with realtime feedback;
+- clip names, thumbnails and active-state outlines;
+- composition Clear, Bypass, Master, Speed and global transport direction;
+- per-layer Clear, Bypass, Solo, Master, Audio and Video controls;
+- the active clip thumbnail and title for every layer;
+- all eight native Composition Dashboard Links, discovered by Resolume parameter
+  ID and labelled with their assigned names;
+- realtime name updates for clips, layers and Dashboard Links.
 
-## Compilation
+Buttons are Toggle controls, but Resolume remains authoritative: after a command,
+the displayed state follows confirmed API feedback rather than the local click.
 
-Les sources du plugin sont réparties entre les modules Lua situés à la racine. Le
-fichier `plugin.lua` est le point d'entrée assemblé par `PLUGCC.exe`.
+## Connection and resource behavior
 
-Dans Visual Studio Code, exécuter la tâche de build par défaut :
+The plugin maintains one WebSocket connection and uses a five-second lightweight
+`/api/v1/product` health request to detect a disabled Webserver. Composition and
+parameter state are event-driven; there is no periodic composition polling.
 
-```text
-Build and install ResolumeArena.qplug
-```
+Large WebSocket messages are reassembled in a bounded buffer. Thumbnail downloads
+are limited to four concurrent requests and cached by clip identity/version, with
+a maximum of 256 cached images. Rapid deck changes use bounded stabilization
+requests so partial Resolume snapshots converge without an unbounded request loop.
 
-La tâche propose l'incrément de `BuildVersion`, génère `ResolumeArena.qplug`, puis
-le copie dans :
+## Known limitations
 
-```text
-%USERPROFILE%\Documents\QSC\Q-Sys Designer\Plugins\ResolumeArena
-```
+- Resolume may return HTTP 404 for the thumbnail of an active clip belonging to a
+  non-selected deck that has not yet been exposed during the current connection.
+  The plugin displays a subtle unavailable-image icon until Resolume makes the PNG
+  available; the active clip title remains visible.
+- Dashboard controls cover Resolume's eight native Composition Dashboard Links.
+- Interface dimensions and generated pin counts depend on the design-time count
+  properties. Changing them regenerates the corresponding controls.
+- The Resolume-inspired SVG appearance may not transfer ideally when controls are
+  copied into a custom UCI. Select the **Q-SYS** look for native Q-SYS buttons.
 
-Le build peut également être lancé depuis PowerShell :
+## Building from source
+
+The Lua modules in the repository root are assembled from `plugin.lua` by the
+included Q-SYS plugin compiler. From PowerShell:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\plugincompile\build.ps1 -Increment development
 ```
 
-## Publication
+Use `-SkipInstall` to build without copying the result into the Q-SYS Designer
+plugin directory. Use `-Increment none` for a reproducibility build that preserves
+the current `BuildVersion`.
 
-Le dépôt public contient :
+## References
 
-- ce README ;
-- les modules Lua placés à la racine et nécessaires à la compilation ;
-- le fichier `.qplug` distribuable ;
-- `.gitignore`.
-
-Les scripts de test, captures, journaux, notes d'ingénierie inverse et autres fichiers sandbox restent locaux et ne sont pas publiés. Les fichiers Lua de test placés dans `tests/` restent donc exclus.
-
-## Sources de référence
-
-- [API REST Resolume Arena & Avenue](https://resolume.com/docs/restapi/)
-- [API WebSocket Resolume](https://www.resolume.com/support/en/websocket-api)
-- [Module Companion Resolume Arena](https://github.com/bitfocus/companion-module-resolume-arena)
+- [Resolume REST API](https://resolume.com/docs/restapi/)
+- [Resolume WebSocket API](https://www.resolume.com/support/en/websocket-api)
+- [Bitfocus Companion Resolume module](https://github.com/bitfocus/companion-module-resolume-arena)

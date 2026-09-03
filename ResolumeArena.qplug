@@ -2,8 +2,8 @@
 
 PluginInfo = {
   Name = "Resolume Arena",
-  Version = "0.1",
-  BuildVersion = "0.1.0.13",
+  Version = "0.1.0",
+  BuildVersion = "0.1.0.74",
   Id = "8de626d8-cede-48af-bb14-b282576cff45",
   Author = "MAQ-SYSTEMS",
   Description = "Control Resolume Arena from a Q-SYS Core"
@@ -17,7 +17,7 @@ function GetPrettyName(props)
   return "Resolume Arena " .. PluginInfo.Version
 end
 
-PageNames = { "Composition", "Setup" }
+PageNames = { "Composition" }
 
 function GetPages(props)
   local pages = {}
@@ -96,6 +96,43 @@ function GetControls(props)
     })
   end
   
+  local function addDisplayText(name, prettyName)
+    table.insert(ctrls, {
+      Name = name,
+      PrettyName = prettyName,
+      ControlType = "Text",
+      UserPin = false
+    })
+  end
+  
+  local function addKnob(name, prettyName, minimum, maximum, defaultValue)
+    table.insert(ctrls, {
+      Name = name,
+      PrettyName = prettyName,
+      ControlType = "Knob",
+      ControlUnit = "Float",
+      Min = minimum,
+      Max = maximum,
+      DefaultValue = defaultValue,
+      UserPin = true,
+      PinStyle = "Both"
+    })
+  end
+  
+  local function addTypedKnob(name, prettyName, unit, minimum, maximum, defaultValue)
+    table.insert(ctrls, {
+      Name = name,
+      PrettyName = prettyName,
+      ControlType = "Knob",
+      ControlUnit = unit,
+      Min = minimum,
+      Max = maximum,
+      DefaultValue = defaultValue,
+      UserPin = true,
+      PinStyle = "Both"
+    })
+  end
+  
   for deck = 1, deckCount do
     addToggle("Deck " .. deck, "Composition~Decks~Deck " .. deck)
   end
@@ -104,8 +141,38 @@ function GetControls(props)
     addToggle("Column " .. column, "Composition~Columns~Column " .. column)
   end
   
+  addToggle("Composition Clear", "Composition~Controls~Clear")
+  addToggle("Composition Bypass", "Composition~Controls~Bypass")
+  addTypedKnob("Composition Master", "Composition~Controls~Master", "Percent", 0, 100, 100)
+  addTypedKnob("Composition Speed", "Composition~Controls~Speed", "Float", 0, 10, 1)
+  addToggle("Global Play Backwards", "Composition~Controls~Global Play Backwards")
+  addToggle("Global Pause", "Composition~Controls~Global Pause")
+  addToggle("Global Play Forward", "Composition~Controls~Global Play Forward")
+  
   for layer = 1, layerCount do
     addToggle("Layer " .. layer, "Composition~Layers~Layer " .. layer)
+    addDisplayText(
+      "Layer Name " .. layer,
+      "Composition~Layers~Layer " .. layer .. "~Name"
+    )
+    addToggle("Layer Clear " .. layer, "Composition~Layers~Layer " .. layer .. "~Clear")
+    addToggle("Layer Bypass " .. layer, "Composition~Layers~Layer " .. layer .. "~Bypass")
+    addToggle("Layer Solo " .. layer, "Composition~Layers~Layer " .. layer .. "~Solo")
+    addTypedKnob(
+      "Layer Master " .. layer,
+      "Composition~Layers~Layer " .. layer .. "~Master",
+      "Percent", 0, 100, 100
+    )
+    addTypedKnob(
+      "Layer Audio " .. layer,
+      "Composition~Layers~Layer " .. layer .. "~Audio",
+      "dB", -192, 0, 0
+    )
+    addTypedKnob(
+      "Layer Video " .. layer,
+      "Composition~Layers~Layer " .. layer .. "~Video",
+      "Percent", 0, 100, 100
+    )
   
     for column = 1, columnCount do
       addToggle(
@@ -115,9 +182,21 @@ function GetControls(props)
     end
   end
   
+  for link = 1, 8 do
+    addDisplayText(
+      "Dashboard Link Name " .. link,
+      "Dashboard~Link " .. link .. "~Name"
+    )
+    addTypedKnob(
+      "Dashboard Link " .. link,
+      "Dashboard~Link " .. link,
+      "Position", 0, 1, 0
+    )
+  end
+  
   table.insert(ctrls, {
     Name = "IP Address",
-    PrettyName = "Setup~Network~IP Address",
+    PrettyName = "Composition~Header~IP Address",
     ControlType = "Text",
     UserPin = true,
     PinStyle = "Both"
@@ -125,7 +204,7 @@ function GetControls(props)
   
   table.insert(ctrls, {
     Name = "Port",
-    PrettyName = "Setup~Network~Port",
+    PrettyName = "Composition~Header~Port",
     ControlType = "Knob",
     ControlUnit = "Integer",
     Min = 1,
@@ -137,7 +216,7 @@ function GetControls(props)
   
   table.insert(ctrls, {
     Name = "Connection Status",
-    PrettyName = "Setup~Status~Connection",
+    PrettyName = "Composition~Header~Connection",
     ControlType = "Indicator",
     IndicatorType = "Status",
     UserPin = true,
@@ -146,7 +225,7 @@ function GetControls(props)
   
   table.insert(ctrls, {
     Name = "Status Text",
-    PrettyName = "Setup~Status~Details",
+    PrettyName = "Composition~Header~Status",
     ControlType = "Text",
     UserPin = true,
     PinStyle = "Output"
@@ -175,21 +254,26 @@ function GetControlLayout(props)
   local layerCount = props["Maximum Layer Count"].Value
   local resolumeLook = props["Look and Feel"].Value == "Resolume"
   
-  local margin = 6
-  local gap = 4
-  local labelWidth = 94
-  local cellWidth = 112
-  local clipHeight = 78
-  local pageTitleHeight = 26
+  local margin = 14
+  local gap = 2
+  local layerGap = 4
+  local sectionGap = 5
+  local labelWidth = 329
+  local cellWidth = 95
+  local clipHeight = 65
+  local pageTitleHeight = 16
   local columnHeight = 30
-  local deckHeight = 30
-  local gridX = margin + labelWidth + gap
-  local gridY = margin + pageTitleHeight + columnHeight + gap
-  local pageWidth = math.max(500, gridX + columnCount * cellWidth + margin)
+  local deckHeight = 28
+  local headerHeight = 104
+  local gridX = margin + labelWidth + sectionGap
+  local columnY = headerHeight + margin
+  local gridY = columnY + columnHeight + gap
+  local pageWidth = math.max(980, gridX + columnCount * cellWidth + margin)
   local deckColumns = math.max(1, columnCount)
   local deckRows = math.ceil(deckCount / deckColumns)
   local decksY = gridY + layerCount * clipHeight + gap
-  local compositionHeight = decksY + deckRows * deckHeight + margin
+  local dashboardHeight = 52
+  local compositionHeight = decksY + math.max(deckRows * deckHeight, dashboardHeight) + margin
   
   local function addBackground(width, height)
     table.insert(graphics, {
@@ -197,7 +281,7 @@ function GetControlLayout(props)
       Text = "",
       Position = { 0, 0 },
       Size = { width, height },
-      Fill = COLORS.Dark,
+      Fill = COLORS.Black,
       StrokeColor = COLORS.Gray,
       StrokeWidth = 1,
       CornerRadius = 0
@@ -206,7 +290,7 @@ function GetControlLayout(props)
   
   local function addText(text, position, size, color, alignment, fontSize)
     table.insert(graphics, {
-      Type = "Text",
+      Type = "Label",
       Text = text,
       Position = position,
       Size = size,
@@ -242,7 +326,11 @@ function GetControlLayout(props)
       Position = position,
       Size = size,
       Font = "Roboto",
-      FontSize = 10
+      FontSize = 10,
+      Margin = 0,
+      Padding = 0,
+      CornerRadius = 2,
+      Radius = 2
     }
   
     if resolumeLook then
@@ -250,28 +338,131 @@ function GetControlLayout(props)
       controlLayout.OffColor = COLORS.Resolume
       controlLayout.UnlinkOffColor = true
       controlLayout.StrokeColor = COLORS.Gray
-      controlLayout.StrokeWidth = 1
-      controlLayout.CornerRadius = 1
+      controlLayout.StrokeWidth = 0
+      controlLayout.CornerRadius = 2
+      controlLayout.Radius = 2
     end
   
     layout[name] = controlLayout
   end
   
+  local function addPositionMeter(name, position, size, prettyName, color, className)
+    layout[name] = {
+      PrettyName = prettyName,
+      Style = "Text",
+      TextBoxStyle = "Meter",
+      Position = position,
+      Size = size,
+      Color = color,
+      TextColor = COLORS.White,
+      Margin = 0,
+      Padding = 0,
+      CornerRadius = 0,
+      Radius = 0,
+      StrokeWidth = 0,
+      Font = "Roboto",
+      FontSize = 10,
+      ClassName = className
+    }
+  end
+  
   if currentPage == "Composition" then
     addBackground(pageWidth, compositionHeight)
-    addText("Composition", { margin, margin }, { pageWidth - margin * 2, pageTitleHeight }, COLORS.Mint, "Left", 14)
-    addText("Layers", { margin, margin + pageTitleHeight }, { labelWidth, columnHeight }, COLORS.Gray, "Left", 10)
+    local headerX = margin
+    local headerY = 10
+    local headerWidth = labelWidth
+    table.insert(graphics, {
+      Type = "GroupBox", Text = "", Position = { headerX, headerY + 78 },
+      Size = { headerWidth, 22 }, Fill = COLORS.Gray,
+      StrokeWidth = 0, CornerRadius = 0
+    })
+    addText(
+      "Q-SYS Plugin for Resolume Arena",
+      { headerX + 74, headerY + 12 },
+      { headerWidth - 82, 20 },
+      COLORS.White,
+      "Left",
+      14
+    )
+    addText("Designed by Mathieu Maquet (MAQ SYSTEMS)", { headerX + 74, headerY + 34 }, { headerWidth - 82, 14 }, COLORS.Mint, "Left", 8)
+    addText("version " .. PluginInfo.BuildVersion, { headerX + 74, headerY + 50 }, { headerWidth - 82, 12 }, COLORS.White, "Left", 7)
+    local setupY = headerY + 80
+    local setupHeight = 18
+    addText("IP", { headerX + 8, setupY }, { 14, setupHeight }, COLORS.White, "Left", 8)
+    layout["IP Address"] = {
+      PrettyName = "Network~IP Address",
+      Style = "Text",
+      Position = { headerX + 26, setupY },
+      Size = { 82, 18 },
+      Font = "Roboto",
+      FontSize = 10,
+      Margin = 0,
+      Padding = 0,
+      CornerRadius = 2
+    }
+    addText("Port", { headerX + 116, setupY }, { 26, setupHeight }, COLORS.White, "Right", 8)
+    layout["Port"] = {
+      PrettyName = "Network~Port",
+      Style = "Text",
+      Position = { headerX + 146, setupY },
+      Size = { 48, 18 },
+      Font = "Roboto",
+      FontSize = 10,
+      Margin = 0,
+      Padding = 0,
+      CornerRadius = 2
+    }
+    layout["Connection Status"] = {
+      PrettyName = "Status~Connection",
+      Style = "LED",
+      Position = { headerX + 244, setupY },
+      Size = { 77, setupHeight },
+      Color = COLORS.Mint
+    }
+    addText("Status", { headerX + 202, setupY }, { 38, setupHeight }, COLORS.White, "Right", 8)
+    table.insert(graphics, {
+      Type = "GroupBox",
+      Text = "",
+      Position = { margin, columnY },
+      Size = { 324, pageTitleHeight },
+      Fill = COLORS.Gray,
+      Padding = 0,
+      StrokeWidth = 0,
+      CornerRadius = 2
+    })
+    addText("Composition", { margin + 4, columnY }, { 320, pageTitleHeight }, COLORS.White, "Left", 10)
+    local controlsY = columnY + pageTitleHeight
+    local compositionControlHeight = columnHeight - pageTitleHeight
+    addToggle("Composition Clear", "X", { margin, controlsY }, { 36, compositionControlHeight }, "Composition Controls~Clear", COLORS.Mint)
+    addToggle("Composition Bypass", "B", { margin + 38, controlsY }, { 36, compositionControlHeight }, "Composition Controls~Bypass", COLORS.Mint)
+    addText("M", { margin + 76, controlsY }, { 12, compositionControlHeight }, COLORS.White, "Center", 8)
+    addPositionMeter("Composition Master", { margin + 88, controlsY }, { 62, compositionControlHeight }, "Composition Controls~Master", COLORS.Gray, "resolume-master")
+    addText("S", { margin + 152, controlsY }, { 12, compositionControlHeight }, COLORS.White, "Center", 8)
+    addPositionMeter("Composition Speed", { margin + 164, controlsY }, { 64, compositionControlHeight }, "Composition Controls~Speed", COLORS.Gray, "resolume-speed")
+    addToggle("Global Play Backwards", "◀", { margin + 230, controlsY }, { 31, compositionControlHeight }, "Composition Controls~Global Play Backwards", COLORS.Mint)
+    addToggle("Global Pause", "Ⅱ", { margin + 263, controlsY }, { 31, compositionControlHeight }, "Composition Controls~Global Pause", COLORS.Mint)
+    addToggle("Global Play Forward", "▶", { margin + 296, controlsY }, { 28, compositionControlHeight }, "Composition Controls~Global Play Forward", COLORS.Mint)
   
     for column = 1, columnCount do
       addToggle(
         "Column " .. column,
         "Column " .. column,
-        { gridX + (column - 1) * cellWidth, margin + pageTitleHeight },
+        { gridX + (column - 1) * cellWidth, columnY },
         { cellWidth - gap, columnHeight },
         "Columns~Column " .. column,
         COLORS.Mint
       )
     end
+  
+    table.insert(graphics, {
+      Type = "GroupBox",
+      Text = "",
+      Position = { margin + labelWidth + 2, columnY },
+      Size = { 2, gridY + layerCount * clipHeight - layerGap - columnY },
+      Fill = COLORS.PinkDark,
+      StrokeWidth = 0,
+      CornerRadius = 0
+    })
   
     for layer = 1, layerCount do
       -- Resolume displays Layer 1 at the bottom of the grid.
@@ -279,11 +470,69 @@ function GetControlLayout(props)
       local y = gridY + visualRow * clipHeight
   
       addToggle(
-        "Layer " .. layer,
-        "Layer " .. layer,
+        "Layer Clear " .. layer,
+        "X",
         { margin, y },
-        { labelWidth, clipHeight - gap },
-        "Layers~Layer " .. layer,
+        { 36, 44 },
+        "Layers~Layer " .. layer .. "~Clear",
+        COLORS.Mint
+      )
+      addToggle(
+        "Layer Bypass " .. layer,
+        "B",
+        { margin + 38, y },
+        { 36, 44 },
+        "Layers~Layer " .. layer .. "~Bypass",
+        COLORS.Pink
+      )
+      addToggle(
+        "Layer Solo " .. layer,
+        "S",
+        { margin + 76, y },
+        { 36, 44 },
+        "Layers~Layer " .. layer .. "~Solo",
+        COLORS.Mint
+      )
+      addText("M", { margin + 114, y }, { 12, 14 }, COLORS.Gray, "Center", 8)
+      addPositionMeter("Layer Master " .. layer, { margin + 126, y }, { 102, 14 }, "Layers~Layer " .. layer .. "~Master", COLORS.Gray, "resolume-layer-master")
+      addText("A", { margin + 114, y + 15 }, { 12, 14 }, COLORS.Pink, "Center", 8)
+      addPositionMeter("Layer Audio " .. layer, { margin + 126, y + 15 }, { 102, 14 }, "Layers~Layer " .. layer .. "~Audio", COLORS.Pink, "resolume-layer-audio")
+      addText("V", { margin + 114, y + 30 }, { 12, 14 }, COLORS.Mint, "Center", 8)
+      addPositionMeter("Layer Video " .. layer, { margin + 126, y + 30 }, { 102, 14 }, "Layers~Layer " .. layer .. "~Video", COLORS.MintDark, "resolume-layer-video")
+      table.insert(graphics, {
+        Type = "GroupBox",
+        Text = "",
+        Position = { margin, y + 45 },
+        Size = { 228, 16 },
+        Margin = 0,
+        Padding = 0,
+        CornerRadius = 2,
+        Radius = 2,
+        Fill = COLORS.Gray,
+        StrokeColor = COLORS.Gray,
+        StrokeWidth = 0
+      })
+      layout["Layer Name " .. layer] = {
+        PrettyName = "Layers~Layer " .. layer .. "~Name",
+        Style = "Text",
+        IsReadOnly = true,
+        TextBoxStyle = "NoBackground",
+        Position = { margin + 4, y + 45 },
+        Size = { 224, 16 },
+        Margin = 0,
+        Padding = 0,
+        TextColor = COLORS.White,
+        Font = "Roboto",
+        FontSize = 10,
+        HTextAlign = "Left",
+        VTextAlign = "Center"
+      }
+      addToggle(
+        "Layer " .. layer,
+        "Layer " .. layer,
+        { margin + labelWidth - 98, y },
+        { 93, clipHeight - layerGap },
+        "Layers~Layer " .. layer .. "~Thumbnail",
         COLORS.Mint
       )
   
@@ -293,14 +542,43 @@ function GetControlLayout(props)
           name,
           string.format("L%d C%d", layer, column),
           { gridX + (column - 1) * cellWidth, y },
-          { cellWidth - gap, clipHeight - gap },
+          { cellWidth - gap, clipHeight - layerGap },
           string.format("Clips~Layer %d~Column %d", layer, column),
           COLORS.Mint
         )
       end
     end
   
-    addText("Decks", { margin, decksY }, { labelWidth, deckHeight }, COLORS.Gray, "Left", 10)
+    local dashboardCellWidth = math.floor(labelWidth / 8)
+    for link = 1, 8 do
+      local x = margin + (link - 1) * dashboardCellWidth
+      layout["Dashboard Link " .. link] = {
+        PrettyName = "Dashboard~Link " .. link,
+        Style = "Knob",
+        Position = { x + 5, decksY },
+        Size = { dashboardCellWidth - 10, 34 },
+        Color = COLORS.Mint,
+        Margin = 0,
+        Padding = 0,
+        Font = "Roboto",
+        FontSize = 9
+      }
+      layout["Dashboard Link Name " .. link] = {
+        PrettyName = "Dashboard~Link " .. link .. "~Name",
+        Style = "Text",
+        IsReadOnly = true,
+        TextBoxStyle = "NoBackground",
+        Position = { x, decksY + 35 },
+        Size = { dashboardCellWidth - 2, 15 },
+        Margin = 0,
+        Padding = 0,
+        TextColor = COLORS.White,
+        Font = "Roboto",
+        FontSize = 8,
+        HTextAlign = "Center",
+        VTextAlign = "Center"
+      }
+    end
     for deck = 1, deckCount do
       local deckRow = math.floor((deck - 1) / deckColumns)
       local deckColumn = (deck - 1) % deckColumns
@@ -313,50 +591,15 @@ function GetControlLayout(props)
         COLORS.Mint
       )
     end
-  elseif currentPage == "Setup" then
-    local setupWidth = 520
-    local setupHeight = 260
-    addBackground(setupWidth, setupHeight)
-    addText("Setup", { margin, margin }, { setupWidth - margin * 2, pageTitleHeight }, COLORS.Pink, "Left", 14)
   
-    addGroup("Network", { 14, 40 }, { 492, 98 }, COLORS.Pink)
-    addText("IP Address", { 30, 68 }, { 112, 24 }, COLORS.Gray, "Right", 11)
-    layout["IP Address"] = {
-      PrettyName = "Network~IP Address",
-      Style = "Text",
-      Position = { 152, 68 },
-      Size = { 250, 24 },
-      Font = "Roboto",
-      FontSize = 11
-    }
-  
-    addText("Port", { 30, 100 }, { 112, 24 }, COLORS.Gray, "Right", 11)
-    layout["Port"] = {
-      PrettyName = "Network~Port",
-      Style = "Text",
-      Position = { 152, 100 },
-      Size = { 100, 24 },
-      Font = "Roboto",
-      FontSize = 11
-    }
-  
-    addGroup("Status", { 14, 150 }, { 492, 92 }, COLORS.Mint)
-    addText("Connection", { 30, 181 }, { 112, 24 }, COLORS.Gray, "Right", 11)
-    layout["Connection Status"] = {
-      PrettyName = "Status~Connection",
-      Style = "LED",
-      Position = { 152, 181 },
-      Size = { 24, 24 },
-      Color = COLORS.Mint
-    }
-    layout["Status Text"] = {
-      PrettyName = "Status~Details",
-      Style = "Text",
-      Position = { 184, 181 },
-      Size = { 290, 24 },
-      Font = "Roboto",
-      FontSize = 11
-    }
+    -- Keep the logo last in the natural graphics paint order. QDS reliably
+    -- renders this after the full-page background without explicit ZOrder.
+    table.insert(graphics, {
+      Type = "Svg",
+      Image = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDI0IDI0IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zOnNlcmlmPSJodHRwOi8vd3d3LnNlcmlmLmNvbS8iIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLW1pdGVybGltaXQ6MjsiPgogICAgPGcgaWQ9IkFydGJvYXJkNiIgdHJhbnNmb3JtPSJtYXRyaXgoMC4wOTYxOCwwLDAsMC4wOTYxOCwtNDgyLjM4Mjc4OCw1MS4yMTk0MDMpIj4KICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgyLjA3OTQ1LDAsMCwyLjA3OTQ1LC01NzI3LC02NjIuMTYpIj4KICAgICAgICAgICAgPHBhdGggZD0iTTUyNjYuMjEsMTgyLjMzNUw1MjYxLjA5LDE4Mi4zMzVMNTI2MS4wOSwxNzIuOTIxQzUyNjAuNTEsMTczLjU3NCA1MjU5LjgsMTc0LjA5NyA1MjU4Ljk4LDE3NC40OUM1MjU4LjE1LDE3NC44ODIgNTI1Ny4yLDE3NS4wNzggNTI1Ni4xNSwxNzUuMDc4QzUyNTQuNzksMTc1LjA3OCA1MjUzLjUzLDE3NC43NDIgNTI1Mi4zNywxNzQuMDY5QzUyNTEuMjEsMTczLjM5NyA1MjUwLjI5LDE3Mi40NTQgNTI0OS42LDE3MS4yNEM1MjQ4LjkxLDE3MC4wMjUgNTI0OC41NywxNjguNjQzIDUyNDguNTcsMTY3LjA5M0M1MjQ4LjU3LDE2NS41NDIgNTI0OC45MSwxNjQuMTYgNTI0OS42LDE2Mi45NDZDNTI1MC4yOSwxNjEuNzMyIDUyNTEuMjIsMTYwLjc4NCA1MjUyLjM5LDE2MC4xMDJDNTI1My41NSwxNTkuNDIgNTI1NC44MywxNTkuMDc5IDUyNTYuMiwxNTkuMDc5QzUyNTcuMjYsMTU5LjA3OSA1MjU4LjIxLDE1OS4yNTIgNTI1OS4wNSwxNTkuNTk4QzUyNTkuODksMTU5Ljk0MyA1MjYwLjU3LDE2MC40MjQgNTI2MS4wOSwxNjEuMDQxTDUyNjEuMDksMTU5LjI0N0w1MjY2LjIxLDE1OS4yNDdMNTI2Ni4yMSwxODIuMzM1Wk01MjQwLDE3NC44ODJMNTIzNC44OCwxNzQuODgyTDUyMzQuODgsMTcyLjY2OUM1MjM0LjM4LDE3My4zOTcgNTIzMy42OSwxNzMuOTg1IDUyMzIuOCwxNzQuNDM0QzUyMzEuOTEsMTc0Ljg4MiA1MjMwLjg4LDE3NS4xMDYgNTIyOS43LDE3NS4xMDZDNTIyOC4zNCwxNzUuMTA2IDUyMjcuMSwxNzQuNzc1IDUyMjUuOTgsMTc0LjExMUM1MjI0Ljg3LDE3My40NDggNTIyMy45OCwxNzIuNTA1IDUyMjMuMzMsMTcxLjI4MkM1MjIyLjY5LDE3MC4wNTggNTIyMi4zNiwxNjguNjQzIDUyMjIuMzYsMTY3LjAzN0M1MjIyLjM2LDE2NS40MyA1MjIyLjY5LDE2NC4wMiA1MjIzLjMzLDE2Mi44MDZDNTIyMy45OCwxNjEuNTkyIDUyMjQuODcsMTYwLjY1OCA1MjI1Ljk4LDE2MC4wMDRDNTIyNy4xLDE1OS4zNSA1MjI4LjM1LDE1OS4wMjMgNTIyOS43MywxNTkuMDIzQzUyMzAuOTEsMTU5LjAyMyA1MjMxLjk0LDE1OS4yNDcgNTIzMi44MywxNTkuNjk2QzUyMzMuNzIsMTYwLjE0NCA1MjM0LjQsMTYwLjczMiA1MjM0Ljg4LDE2MS40NjFMNTIzNC44OCwxNTkuMjQ3TDUyNDAsMTU5LjI0N0w1MjQwLDE3NC44ODJaTTUxOTAuOTEsMTc0Ljg4Mkw1MTg1Ljc5LDE3NC44ODJMNTE4NS43OSwxNTkuMjQ3TDUxOTAuOTEsMTU5LjI0N0w1MTkwLjkxLDE2MS4yMDlDNTE5MS40MywxNjAuNTU1IDUxOTIuMTEsMTYwLjAzNyA1MTkyLjk1LDE1OS42NTRDNTE5My43OSwxNTkuMjcxIDUxOTQuNzQsMTU5LjA3OSA1MTk1LjgsMTU5LjA3OUM1MTk3LjA1LDE1OS4wNzkgNTE5OC4xOCwxNTkuMzMxIDUxOTkuMTYsMTU5LjgzNkM1MjAwLjE1LDE2MC4zNCA1MjAwLjkzLDE2MS4wNTkgNTIwMS40OSwxNjEuOTkzQzUyMDIuMDcsMTYxLjEzNCA1MjAyLjg1LDE2MC40MzQgNTIwMy44NSwxNTkuODkyQzUyMDQuODUsMTU5LjM1IDUyMDUuOTQsMTU5LjA3OSA1MjA3LjEyLDE1OS4wNzlDNTIwOS4xOSwxNTkuMDc5IDUyMTAuODUsMTU5LjY2OCA1MjEyLjA3LDE2MC44NDRDNTIxMy4zLDE2Mi4wMjEgNTIxMy45MSwxNjMuNjU2IDUyMTMuOTEsMTY1Ljc0OEw1MjEzLjkxLDE3NC44ODJMNTIwOC44MiwxNzQuODgyTDUyMDguODIsMTY2LjM5MkM1MjA4LjgyLDE2NS4zODQgNTIwOC41NCwxNjQuNjA0IDUyMDcuOTcsMTY0LjA1M0M1MjA3LjQsMTYzLjUwMiA1MjA2LjYyLDE2My4yMjYgNTIwNS42MiwxNjMuMjI2QzUyMDQuNjIsMTYzLjIyNiA1MjAzLjg0LDE2My41MDIgNTIwMy4yNywxNjQuMDUzQzUyMDIuNywxNjQuNjA0IDUyMDIuNDEsMTY1LjM4NCA1MjAyLjQxLDE2Ni4zOTJMNTIwMi40MSwxNzQuODgyTDUxOTcuMzIsMTc0Ljg4Mkw1MTk3LjMyLDE2Ni4zOTJDNTE5Ny4zMiwxNjUuMzg0IDUxOTcuMDQsMTY0LjYwNCA1MTk2LjQ3LDE2NC4wNTNDNTE5NS45LDE2My41MDIgNTE5NS4xMiwxNjMuMjI2IDUxOTQuMTIsMTYzLjIyNkM1MTkzLjEyLDE2My4yMjYgNTE5Mi4zNCwxNjMuNTAyIDUxOTEuNzcsMTY0LjA1M0M1MTkxLjIsMTY0LjYwNCA1MTkwLjkxLDE2NS4zODQgNTE5MC45MSwxNjYuMzkyTDUxOTAuOTEsMTc0Ljg4MlpNNTIzNC44OCwxNjcuMDY1QzUyMzQuODgsMTY1Ljg2OSA1MjM0LjUzLDE2NC45MjYgNTIzMy44MiwxNjQuMjM1QzUyMzMuMTEsMTYzLjU0NCA1MjMyLjI0LDE2My4xOTggNTIzMS4yMywxNjMuMTk4QzUyMzAuMjEsMTYzLjE5OCA1MjI5LjM0LDE2My41MzkgNTIyOC42NCwxNjQuMjIxQzUyMjcuOTMsMTY0LjkwMyA1MjI3LjU3LDE2NS44NDEgNTIyNy41NywxNjcuMDM3QzUyMjcuNTcsMTY4LjIzMiA1MjI3LjkzLDE2OS4xOCA1MjI4LjY0LDE2OS44ODFDNTIyOS4zNCwxNzAuNTgxIDUyMzAuMjEsMTcwLjkzMSA1MjMxLjIzLDE3MC45MzFDNTIzMi4yNCwxNzAuOTMxIDUyMzMuMTEsMTcwLjU4NiA1MjMzLjgyLDE2OS44OTVDNTIzNC41MywxNjkuMjAzIDUyMzQuODgsMTY4LjI2IDUyMzQuODgsMTY3LjA2NVpNNTI2MS4wOSwxNjcuMDY1QzUyNjEuMDksMTY2LjIyNCA1MjYwLjkxLDE2NS41MTkgNTI2MC41NiwxNjQuOTQ5QzUyNjAuMjEsMTY0LjM4IDUyNTkuNzYsMTYzLjk1IDUyNTkuMiwxNjMuNjZDNTI1OC42NCwxNjMuMzcxIDUyNTguMDUsMTYzLjIyNiA1MjU3LjQzLDE2My4yMjZDNTI1Ni44MywxNjMuMjI2IDUyNTYuMjYsMTYzLjM3MSA1MjU1LjcsMTYzLjY2QzUyNTUuMTQsMTYzLjk1IDUyNTQuNjgsMTY0LjM4NCA1MjU0LjMyLDE2NC45NjNDNTI1My45NiwxNjUuNTQyIDUyNTMuNzgsMTY2LjI1MiA1MjUzLjc4LDE2Ny4wOTNDNTI1My43OCwxNjcuOTMzIDUyNTMuOTYsMTY4LjYzOCA1MjU0LjMyLDE2OS4yMDhDNTI1NC42OCwxNjkuNzc4IDUyNTUuMTQsMTcwLjIwNyA1MjU1LjcsMTcwLjQ5N0M1MjU2LjI2LDE3MC43ODcgNTI1Ni44MywxNzAuOTMxIDUyNTcuNDMsMTcwLjkzMUM1MjU4LjAzLDE3MC45MzEgNTI1OC42MiwxNzAuNzg3IDUyNTkuMTksMTcwLjQ5N0M1MjU5Ljc1LDE3MC4yMDcgNTI2MC4yMSwxNjkuNzczIDUyNjAuNTYsMTY5LjE5NEM1MjYwLjkxLDE2OC42MTUgNTI2MS4wOSwxNjcuOTA1IDUyNjEuMDksMTY3LjA2NVpNNTI3NiwxNTIuMTM0TDUxNzYsMTUyLjEzNEw1MTc2LDcyLjMxM0M1MTkwLjk3LDcyLjMxMyA1MjA0LjkzLDc2LjgwMSA1MjE2LjcyLDg0LjU1OUw1MjI2LDYyLjMzNUw1MjM1LjI4LDg0LjU1OUM1MjQ3LjA3LDc2LjgwMSA1MjYxLjAzLDcyLjMxMyA1Mjc2LDcyLjMxM0w1Mjc2LDE1Mi4xMzRaTTUxOTcuNSwxNDYuMTQ3TDUyMTAuMDYsMTQ2LjE0N0M1MjA2LjQ1LDE0Mi45OTQgNTIwMy44LDEzOC43OTEgNTIwMi41NywxMzQuMDE5TDUxOTcuNSwxNDYuMTQ3Wk01MjQ5LjQ0LDEzNC4wMTlDNTI0OC4yLDEzOC43OTEgNTI0NS41NSwxNDIuOTk0IDUyNDEuOTQsMTQ2LjE0N0w1MjU0LjUsMTQ2LjE0N0w1MjQ5LjQ0LDEzNC4wMTlaTTUyMTQuMzcsOTAuMTg4QzUyMDQuOTYsODMuODI5IDUxOTMuNzksNzkuNjAzIDUxODIsNzguNTY0TDUxODIsMTQ2LjE0N0w1MTkxLDE0Ni4xNDdMNTIxNC4zNyw5MC4xODhaTTUyMzcuNjMsOTAuMTg4TDUyNjEsMTQ2LjE0N0w1MjcwLDE0Ni4xNDdMNTI3MCw3OC41NjRDNTI1OC4xMiw3OS42MTEgNTI0Ny4wOSw4My43NDIgNTIzNy42Myw5MC4xODhaTTUyNDAuODQsMTM4LjQ5MkM1MjQxLjMyLDEzNy44MDcgNTI0MS43NywxMzcuMDkyIDUyNDIuMTUsMTM2LjM0N0M1MjQyLjkxLDEzNC45MDEgNTI0My40NywxMzMuMzUzIDUyNDMuOCwxMzEuNzU3QzUyNDQuMjksMTI5LjQ2OCA1MjQ0LjMzLDEyNy4wODQgNTI0My45MSwxMjQuNzhDNTI0My41MywxMjIuNjY0IDUyNDIuNzcsMTIwLjYyMSA1MjQxLjY3LDExOC43NzJDNTI0MC4wNSwxMTYuMDQ0IDUyMzcuNzIsMTEzLjc1OSA1MjM0Ljk2LDExMi4xOThDNTIzMy4yNCwxMTEuMjI5IDUyMzEuMzgsMTEwLjU0MiA1MjI5LjQ0LDExMC4xNzNDNTIyNy40NywxMDkuNzk2IDUyMjUuNDQsMTA5Ljc0NyA1MjIzLjQ2LDExMC4wMjRDNTIyMS42OCwxMTAuMjcyIDUyMTkuOTQsMTEwLjc4NiA1MjE4LjMyLDExMS41NDNDNTIxNi40LDExMi40MzcgNTIxNC42NCwxMTMuNjY4IDUyMTMuMTQsMTE1LjE2M0M1MjExLjQsMTE2Ljg5MSA1MjEwLjAyLDExOC45NjYgNTIwOS4xMSwxMjEuMjM3QzUyMDguMjQsMTIzLjM3OSA1MjA3LjgsMTI1LjY4MiA1MjA3LjgsMTI3Ljk5MUM1MjA3LjgsMTMwLjE4OSA1MjA4LjIsMTMyLjM4MiA1MjA4Ljk5LDEzNC40MzZDNTIwOS45MywxMzYuODk1IDUyMTEuNDEsMTM5LjEzNyA1MjEzLjI5LDE0MC45NzJDNTIxNS4wMiwxNDIuNjU2IDUyMTcuMDksMTQzLjk5MSA1MjE5LjMzLDE0NC44NzVDNTIyMS4wNSwxNDUuNTUyIDUyMjIuODcsMTQ1Ljk2MSA1MjI0LjcyLDE0Ni4wOUM1MjI2LjY3LDE0Ni4yMjYgNTIyOC42NSwxNDYuMDUgNTIzMC41NCwxNDUuNTYzQzUyMzIuNjksMTQ1LjAxMiA1MjM0LjcyLDE0NC4wNjIgNTIzNi41MywxNDIuNzg2TDUyMjMuODgsMTMwLjExNUM1MjI1LjI5LDEyOC42OTkgNTIyNi43MSwxMjcuMjgzIDUyMjguMTIsMTI1Ljg2N0w1MjQwLjg0LDEzOC40OTJaTTUyMTMuNzgsMTA3LjE1QzUyMTcuMzcsMTA1LjA1MSA1MjIxLjU1LDEwMy44NDggNTIyNiwxMDMuODQ4QzUyMzAuNDUsMTAzLjg0OCA1MjM0LjYzLDEwNS4wNTEgNTIzOC4yMiwxMDcuMTVMNTIyNiw3Ny45TDUyMTMuNzgsMTA3LjE1WiIgc3R5bGU9ImZpbGw6d2hpdGU7Ii8+CiAgICAgICAgPC9nPgogICAgPC9nPgo8L3N2Zz4K",
+      Position = { headerX + 8, headerY + 5 },
+      Size = { 58, 58 }
+    })
   end
   return layout, graphics
 end
@@ -377,6 +620,7 @@ if Controls then
   ResolumeReconnectTimer = Timer.New()
   ResolumeReceiveBufferTimer = Timer.New()
   ResolumeHealthTimer = Timer.New()
+  ResolumeDeckRefreshTimer = Timer.New()
   local reconnectDelay = 5
   local receiveBufferTimeout = 1
   local receiveBufferLimit = 8 * 1024 * 1024
@@ -391,6 +635,18 @@ if Controls then
   local healthCheckPending = false
   local compositionReceived = false
   local initialRefreshRequested = false
+  local thumbnailQueue = {}
+  local thumbnailRequestsActive = 0
+  local thumbnailRequestLimit = 4
+  local thumbnailCache = {}
+  local thumbnailCacheOrder = {}
+  local thumbnailCacheLimit = 256
+  local thumbnailRequestsPending = {}
+  local activeLayerClips = {}
+  local deckRefreshToken = 0
+  local deckRefreshAttempt = 0
+  local deckRefreshSignature = nil
+  local deckRefreshPending = false
   local applyCompositionSnapshot
   local clearCompositionCache
   local synchronizeFeedbackSubscriptions
@@ -476,6 +732,7 @@ if Controls then
   
   local function restartConnection()
     ResolumeReconnectTimer:Stop()
+    ResolumeDeckRefreshTimer:Stop()
     reconnectRequested = true
   
     if connectionState == "connected" or connectionState == "connecting" then
@@ -558,16 +815,92 @@ if Controls then
     ResolumeHealthTimer:Start(healthCheckInterval)
   end
   
+  local function scheduleDeckRefresh(delay)
+    if connectionState ~= "connected" then return end
+    deckRefreshToken = deckRefreshToken + 1
+    deckRefreshAttempt = 0
+    deckRefreshSignature = nil
+    ResolumeDeckRefreshTimer:Stop()
+    ResolumeDeckRefreshTimer:Start(delay or 0.5)
+  end
+  
+  ResolumeDeckRefreshTimer.EventHandler = function()
+    ResolumeDeckRefreshTimer:Stop()
+    if connectionState ~= "connected" or deckRefreshPending then return end
+  
+    local requestToken = deckRefreshToken
+    local requestHost = activeHost
+    local requestPort = activePort
+    deckRefreshPending = true
+    HttpClient.Get({
+      Url = string.format("http://%s:%d/api/v1/composition", requestHost, requestPort),
+      Headers = { Accept = "application/json" },
+      Timeout = 5,
+      EventHandler = function(_, code, data, errorMessage)
+        deckRefreshPending = false
+        if requestToken ~= deckRefreshToken
+            or requestHost ~= activeHost
+            or requestPort ~= activePort then
+          return
+        end
+  
+        if code ~= 200 or not data or #data == 0 then
+          debugLog(string.format(
+            "Settled composition refresh failed (HTTP %s): %s",
+            tostring(code),
+            tostring(errorMessage)
+          ))
+          return
+        end
+  
+        local ok, composition = pcall(json.decode, data)
+        if not ok or type(composition) ~= "table" then
+          debugLog("Settled composition refresh returned invalid JSON")
+          return
+        end
+  
+        local signatureParts = {}
+        local layers = type(composition.layers) == "table" and composition.layers or {}
+        for layer = 1, #layers do
+          local clips = type(layers[layer].clips) == "table" and layers[layer].clips or {}
+          for column = 1, #clips do
+            local clip = clips[column]
+            signatureParts[#signatureParts + 1] = tostring(clip and clip.id or "-")
+          end
+        end
+        local signature = table.concat(signatureParts, ":")
+        deckRefreshAttempt = deckRefreshAttempt + 1
+        if signature == deckRefreshSignature or deckRefreshAttempt >= 5 then
+          applyCompositionSnapshot(composition)
+          debugLog(string.format(
+            "Composition settled after %d REST checks",
+            deckRefreshAttempt
+          ))
+          return
+        end
+  
+        deckRefreshSignature = signature
+        ResolumeDeckRefreshTimer:Start(0.25)
+      end
+    })
+  end
+  
   local function handleWebSocketMessage(message)
     receivedMessageCount = receivedMessageCount + 1
-    debugLog(string.format("Received JSON message #%d", receivedMessageCount))
   
     if message.columns and message.layers and applyCompositionSnapshot then
+      debugLog(string.format("Applying composition snapshot #%d", receivedMessageCount))
       compositionReceived = true
       initialRefreshRequested = false
       applyCompositionSnapshot(message)
     elseif message.path and message.value ~= nil and applyParameterFeedback then
-      applyParameterFeedback(message.path, message.value)
+      applyParameterFeedback(message.path, message.value, message)
+    elseif message.type == "thumbnail_update" then
+      -- Some large decks first produce a transient snapshot whose clip slots are
+      -- still Empty. Debounce the notification burst, then request the settled
+      -- composition once Resolume has finished switching decks.
+      debugLog("Thumbnail update notification received; scheduling settled refresh")
+      scheduleDeckRefresh(0.5)
     end
   end
   
@@ -608,24 +941,17 @@ if Controls then
   
     local ok, message = pcall(json.decode, receiveBuffer)
     if not ok or type(message) ~= "table" then
-      debugLog(string.format(
-        "Received fragment: %d bytes (buffer %d, binary=%s)",
-        #payload,
-        #receiveBuffer,
-        tostring(isBinary)
-      ))
       return
     end
   
-    local completeLength = #receiveBuffer
     ResolumeReceiveBufferTimer:Stop()
     receiveBuffer = ""
-    debugLog(string.format("Complete JSON message: %d bytes", completeLength))
     handleWebSocketMessage(message)
   end
   
   ResolumeWebSocket.Error = function(_, errorMessage)
     connectionState = "idle"
+    ResolumeDeckRefreshTimer:Stop()
     stopHealthCheck()
     clearReceiveBuffer("WebSocket error")
     setConnectionStatus(2, "WebSocket error: " .. tostring(errorMessage))
@@ -636,6 +962,7 @@ if Controls then
   
   ResolumeWebSocket.Closed = function()
     connectionState = "idle"
+    ResolumeDeckRefreshTimer:Stop()
     stopHealthCheck()
     clearReceiveBuffer("WebSocket closed")
     compositionReceived = false
@@ -693,15 +1020,152 @@ if Controls then
     end
   
     local active = view.active
-    local background = active and "#80ffd2" or "#191817"
+    local inactiveBackground = view.kind == "layerCommand" and "#4f4f4f" or "#191817"
+    local background = active and "#80ffd2" or inactiveBackground
     local foreground = active and "#191817" or "#ffffff"
     local baseline = math.floor(view.height / 2 + 4)
   
+    if view.kind == "clip" or view.kind == "layer" then
+      local isClip = view.kind == "clip"
+      local titleHeight = 16
+      local thumbnailHeight = view.height - titleHeight
+      if isClip and view.state == "Missing" then
+        local svg = table.concat({
+          '<svg xmlns="http://www.w3.org/2000/svg" width="', view.width,
+          '" height="', view.height, '" viewBox="0 0 ', view.width, ' ', view.height,
+          '" preserveAspectRatio="none">',
+          '<rect width="', view.width, '" height="', view.height,
+          '" rx="2" fill="#0f0f0f"/></svg>'
+        })
+        control.Legend = json.encode({
+          DrawChrome = false,
+          IconData = Crypto.Base64Encode(svg)
+        })
+        return
+      end
+      local outline = ""
+      if isClip and active then
+        outline = table.concat({
+          '<rect x="0" y="0" width="', view.width,
+          '" height="', thumbnailHeight,
+          '" rx="2" fill="none" stroke="#80ffd2" stroke-width="3"/>'
+        })
+      end
+      local image = ""
+      if view.thumbnailBase64 then
+        image = table.concat({
+          '<image href="data:image/png;base64,', view.thumbnailBase64,
+          '" x="0" y="0" width="', view.width,
+          '" height="', thumbnailHeight, '" preserveAspectRatio="xMidYMid slice"/>'
+        })
+      elseif not isClip and label ~= "" then
+        local iconX = math.floor((view.width - 26) / 2)
+        local iconY = math.floor((thumbnailHeight - 20) / 2)
+        image = table.concat({
+          '<rect x="0" y="0" width="', view.width,
+          '" height="', thumbnailHeight, '" fill="#0f0f0f"/>',
+          '<g fill="none" stroke="#191817" stroke-width="2">',
+          '<rect x="', iconX, '" y="', iconY,
+          '" width="26" height="20" rx="2"/>',
+          '<circle cx="', iconX + 19, '" cy="', iconY + 6, '" r="2"/>',
+          '<path d="M', iconX + 3, ' ', iconY + 16,
+          ' L', iconX + 10, ' ', iconY + 10,
+          ' L', iconX + 15, ' ', iconY + 14,
+          ' L', iconX + 19, ' ', iconY + 11,
+          ' L', iconX + 23, ' ', iconY + 16, '"/>',
+          '</g>'
+        })
+      end
+  
+      local svg = table.concat({
+        '<svg xmlns="http://www.w3.org/2000/svg" width="', view.width,
+        '" height="', view.height, '" viewBox="0 0 ', view.width, ' ', view.height,
+        '" preserveAspectRatio="none">',
+        '<defs><clipPath id="clipTitle"><rect x="5" y="', thumbnailHeight,
+        '" width="', view.width - 10, '" height="', titleHeight, '"/></clipPath></defs>',
+        '<rect width="', view.width, '" height="', view.height,
+        '" rx="2" fill="#191817"/>',
+        image,
+        outline,
+        '<rect x="0" y="', thumbnailHeight, '" width="', view.width,
+        '" height="', titleHeight, '" rx="2" fill="#4f4f4f"/>',
+        '<text x="6" y="', view.height - 4, '" fill="#ffffff"',
+        ' font-family="Roboto, Arial, sans-serif" font-size="10" ',
+        'clip-path="url(#clipTitle)">', escapeXml(label), '</text>',
+        '</svg>'
+      })
+  
+      control.Legend = json.encode({
+        DrawChrome = false,
+        IconData = Crypto.Base64Encode(svg)
+      })
+      return
+    end
+  
+    if view.kind == "column" then
+      if view.state == "Missing" then
+        local svg = table.concat({
+          '<svg xmlns="http://www.w3.org/2000/svg" width="', view.width,
+          '" height="', view.height, '" viewBox="0 0 ', view.width, ' ', view.height,
+          '" preserveAspectRatio="none">',
+          '<rect width="', view.width, '" height="', view.height,
+          '" rx="2" fill="#0f0f0f"/></svg>'
+        })
+        control.Legend = json.encode({
+          DrawChrome = false,
+          IconData = Crypto.Base64Encode(svg)
+        })
+        return
+      end
+  
+      local iconColor = active and "#80ffd2" or "#ffffff"
+      local titleHeight = 16
+      local titleY = view.height - titleHeight
+      local iconCenterY = math.floor(titleY / 2)
+      local icon
+      if view.state == "Empty" then
+        icon = table.concat({
+          '<rect x="', view.width / 2 - 5, '" y="', iconCenterY - 5,
+          '" width="10" height="10" fill="',
+          iconColor, '"/>'
+        })
+      else
+        icon = table.concat({
+          '<path d="M ', view.width / 2 - 5, ' ', iconCenterY - 7,
+          ' L ', view.width / 2 + 7, ' ', iconCenterY,
+          ' L ', view.width / 2 - 5, ' ', iconCenterY + 7,
+          ' Z" fill="', iconColor, '"/>'
+        })
+      end
+  
+      local svg = table.concat({
+        '<svg xmlns="http://www.w3.org/2000/svg" width="', view.width,
+        '" height="', view.height, '" viewBox="0 0 ', view.width, ' ', view.height,
+        '" preserveAspectRatio="none">',
+        '<rect width="', view.width, '" height="', view.height,
+        '" rx="2" fill="#191817"/>',
+        icon,
+        '<rect x="0" y="', titleY, '" width="', view.width,
+        '" height="', titleHeight, '" fill="#4f4f4f"/>',
+        '<text x="', view.width / 2, '" y="', view.height - 5,
+        '" fill="#ffffff" ',
+        'font-family="Roboto, Arial, sans-serif" font-size="10" text-anchor="middle">',
+        escapeXml(label), '</text></svg>'
+      })
+  
+      control.Legend = json.encode({
+        DrawChrome = false,
+        IconData = Crypto.Base64Encode(svg)
+      })
+      return
+    end
+  
     local svg = table.concat({
       '<svg xmlns="http://www.w3.org/2000/svg" width="', view.width,
-      '" height="', view.height, '" viewBox="0 0 ', view.width, ' ', view.height, '">',
-      '<rect x="1" y="1" width="', view.width - 2, '" height="', view.height - 2,
-      '" rx="2" fill="', background, '" stroke="#4f4f4f" stroke-width="1"/>',
+      '" height="', view.height, '" viewBox="0 0 ', view.width, ' ', view.height,
+      '" preserveAspectRatio="none">',
+      '<rect x="0" y="0" width="', view.width, '" height="', view.height,
+      '" rx="2" fill="', background, '" stroke="none"/>',
       '<text x="', view.width / 2, '" y="', baseline,
       '" fill="', foreground,
       '" font-family="Roboto, Arial, sans-serif" font-size="11" text-anchor="middle">',
@@ -715,7 +1179,7 @@ if Controls then
     })
   end
   
-  local function initializeToggle(name, label, width, height)
+  local function initializeToggle(name, label, width, height, kind)
     local control = Controls[name]
     if not control then return end
   
@@ -724,7 +1188,9 @@ if Controls then
       label = label,
       active = false,
       width = width,
-      height = height
+      height = height,
+      kind = kind or "standard",
+      thumbnailBase64 = nil
     }
     toggleViews[name] = view
   
@@ -739,17 +1205,37 @@ if Controls then
     renderToggle(view)
   end
   
-  local function setToggleState(name, label, active, disabled)
+  local function setToggleState(name, label, active, disabled, state)
     local view = toggleViews[name]
     if not view then return end
   
     view.label = tostring(label or "")
     view.active = active == true
+    view.state = state
+    if disabled and (view.kind == "clip" or view.kind == "layer") then
+      view.thumbnailBase64 = nil
+    end
     applyingCacheFeedback = true
     view.control.Boolean = view.active
     view.control.IsDisabled = disabled == true
     applyingCacheFeedback = false
     renderToggle(view)
+  end
+  
+  local function setToggleThumbnail(name, thumbnailBase64)
+    local view = toggleViews[name]
+    if not view or (view.kind ~= "clip" and view.kind ~= "layer") then return end
+    view.thumbnailBase64 = thumbnailBase64
+    renderToggle(view)
+  end
+  
+  local function setKnobState(name, value, disabled)
+    local control = Controls[name]
+    if not control then return end
+    applyingCacheFeedback = true
+    control.Value = tonumber(value) or 0
+    control.IsDisabled = disabled == true
+    applyingCacheFeedback = false
   end
   
   local function parameterValue(parameter, fallback)
@@ -777,46 +1263,295 @@ if Controls then
     return value == "Connected" or value == "Connected & previewing"
   end
   
+  local function clamp(value, minimum, maximum)
+    return math.max(minimum, math.min(maximum, value))
+  end
+  
+  local function resolumeId(value)
+    if type(value) == "number" then
+      return string.format("%.0f", value)
+    end
+    return tostring(value)
+  end
+  
   local deckCount = Properties["Deck Count"].Value
   local columnCount = Properties["Maximum Column Count"].Value
   local layerCount = Properties["Maximum Layer Count"].Value
   
+  initializeToggle("Composition Clear", "X", 36, 14, "layerCommand")
+  initializeToggle("Composition Bypass", "B", 36, 14, "layerCommand")
+  initializeToggle("Global Play Backwards", "◀", 31, 14, "layerCommand")
+  initializeToggle("Global Pause", "Ⅱ", 31, 14, "layerCommand")
+  initializeToggle("Global Play Forward", "▶", 28, 14, "layerCommand")
+  
   for deck = 1, deckCount do
-    initializeToggle("Deck " .. deck, "Deck " .. deck, 108, 26)
+    initializeToggle("Deck " .. deck, "Deck " .. deck, 93, 26)
   end
   
   for column = 1, columnCount do
-    initializeToggle("Column " .. column, "Column " .. column, 108, 30)
+    initializeToggle("Column " .. column, "Column " .. column, 93, 30, "column")
   end
   
   for layer = 1, layerCount do
-    initializeToggle("Layer " .. layer, "Layer " .. layer, 94, 74)
+    initializeToggle("Layer " .. layer, "Layer " .. layer, 93, 61, "layer")
+    initializeToggle("Layer Clear " .. layer, "X", 36, 44, "layerCommand")
+    initializeToggle("Layer Bypass " .. layer, "B", 36, 44, "layerCommand")
+    initializeToggle("Layer Solo " .. layer, "S", 36, 44, "layerCommand")
   
     for column = 1, columnCount do
       initializeToggle(
         string.format("Clip L%d C%d", layer, column),
         string.format("L%d C%d", layer, column),
-        108,
-        74
+        93,
+        61,
+        "clip"
       )
     end
   end
   
+  for link = 1, 8 do
+    Controls["Dashboard Link Name " .. link].String = ""
+    setKnobState("Dashboard Link " .. link, 0, true)
+  end
+  
   ResolumeCompositionCache = {
     name = "",
+    bypassed = false,
+    bypassedId = nil,
+    master = 1,
+    masterId = nil,
+    speed = 1,
+    speedId = nil,
     sourceDeckCount = 0,
     sourceColumnCount = 0,
     sourceLayerCount = 0,
     decks = {},
     columns = {},
-    layers = {}
+    layers = {},
+    dashboardLinks = {}
   }
   
+  local function updateLayerThumbnail(layer)
+    local cachedLayer = ResolumeCompositionCache.layers[layer]
+    if not cachedLayer then
+      setToggleThumbnail("Layer " .. layer, nil)
+      return
+    end
+  
+    local activeClip = cachedLayer.activeClip
+    local thumbnail = activeClip and activeClip.thumbnailBase64 or nil
+    local clipName = activeClip and activeClip.name or ""
+  
+    if activeClip then
+      for column = 1, columnCount do
+        local clip = cachedLayer.clips[column]
+        if clip and clip.id == activeClip.id then
+          -- During a deck transition the visible cell can exist before its PNG
+          -- has arrived. Never let that temporary nil erase the last valid image
+          -- already cached for the layer's active clip.
+          if clip.thumbnailBase64 then
+            thumbnail = clip.thumbnailBase64
+            activeClip.thumbnailBase64 = thumbnail
+          end
+          break
+        end
+      end
+    end
+    setToggleState("Layer " .. layer, clipName, false, false)
+    setToggleThumbnail("Layer " .. layer, thumbnail)
+  end
+  
+  local pumpThumbnailQueue
+  
+  local function completeThumbnailRequest(task, code, data, errorMessage)
+    thumbnailRequestsActive = math.max(0, thumbnailRequestsActive - 1)
+    thumbnailRequestsPending[task.key] = nil
+  
+    if connectionState ~= "connected"
+        or task.host ~= activeHost
+        or task.port ~= activePort then
+      debugLog("Ignored stale thumbnail " .. task.debugName)
+      pumpThumbnailQueue()
+      return
+    end
+  
+    if code ~= 200 or not data or #data == 0 then
+      debugLog(string.format(
+        "Thumbnail %s failed (HTTP %s): %s",
+        task.debugName,
+        tostring(code),
+        tostring(errorMessage)
+      ))
+      pumpThumbnailQueue()
+      return
+    end
+  
+    local existingThumbnail = thumbnailCache[task.clipId]
+    local existingVersion = existingThumbnail and tonumber(existingThumbnail.lastUpdate)
+    local receivedVersion = tonumber(task.lastUpdate)
+    if existingVersion and receivedVersion and existingVersion > receivedVersion then
+      debugLog("Ignored older thumbnail version " .. task.debugName)
+      pumpThumbnailQueue()
+      return
+    end
+  
+    local thumbnailBase64 = Crypto.Base64Encode(data)
+    if not thumbnailCache[task.clipId] then
+      thumbnailCacheOrder[#thumbnailCacheOrder + 1] = task.clipId
+    end
+    thumbnailCache[task.clipId] = {
+      lastUpdate = task.lastUpdate,
+      thumbnailBase64 = thumbnailBase64
+    }
+    while #thumbnailCacheOrder > thumbnailCacheLimit do
+      local expiredId = table.remove(thumbnailCacheOrder, 1)
+      thumbnailCache[expiredId] = nil
+    end
+    for layer = 1, layerCount do
+      local cachedLayer = ResolumeCompositionCache.layers[layer]
+      local layerChanged = false
+      if cachedLayer then
+        if cachedLayer.activeClip and cachedLayer.activeClip.id == task.clipId then
+          cachedLayer.activeClip.thumbnailBase64 = thumbnailBase64
+          layerChanged = true
+        end
+        for column = 1, columnCount do
+          local cachedClip = cachedLayer.clips[column]
+          if cachedClip and cachedClip.id == task.clipId then
+            cachedClip.thumbnailBase64 = thumbnailBase64
+            setToggleThumbnail(
+              string.format("Clip L%d C%d", layer, column),
+              thumbnailBase64
+            )
+            layerChanged = true
+          end
+        end
+      end
+      if layerChanged then updateLayerThumbnail(layer) end
+    end
+    debugLog(string.format(
+      "Thumbnail %s received: %d bytes",
+      task.debugName,
+      #data
+    ))
+    pumpThumbnailQueue()
+  end
+  
+  pumpThumbnailQueue = function()
+    while thumbnailRequestsActive < thumbnailRequestLimit and #thumbnailQueue > 0 do
+      local task = table.remove(thumbnailQueue, 1)
+      thumbnailRequestsActive = thumbnailRequestsActive + 1
+      HttpClient.Get({
+        Url = task.url,
+        Headers = { Accept = "image/png,image/*" },
+        Timeout = 5,
+        EventHandler = function(_, code, data, errorMessage)
+          completeThumbnailRequest(task, code, data, errorMessage)
+        end
+      })
+    end
+  end
+  
+  local function queueThumbnail(task)
+    if not resolumeLook or connectionState ~= "connected" then return end
+    task.key = resolumeId(task.clipId) .. ":" .. tostring(task.lastUpdate or "")
+    if thumbnailRequestsPending[task.key] then return end
+    task.host = activeHost
+    task.port = activePort
+    thumbnailRequestsPending[task.key] = true
+    if task.priority then
+      table.insert(thumbnailQueue, 1, task)
+    else
+      thumbnailQueue[#thumbnailQueue + 1] = task
+    end
+    pumpThumbnailQueue()
+  end
+  
+  local function clearQueuedThumbnailRequests()
+    for _, task in ipairs(thumbnailQueue) do
+      thumbnailRequestsPending[task.key] = nil
+    end
+    thumbnailQueue = {}
+  end
+  
+  local function fetchClipThumbnail(layer, column, clipId, lastUpdate)
+    queueThumbnail({
+      clipId = clipId,
+      lastUpdate = lastUpdate,
+      debugName = string.format("L%d C%d", layer, column),
+      url = string.format(
+        "http://%s:%d/api/v1/composition/clips/by-id/%s/thumbnail",
+        activeHost, activePort, resolumeId(clipId)
+      )
+    })
+  end
+  
+  local function fetchActiveClipThumbnail(layer, activeClip)
+    local path = activeClip.thumbnailPath
+    if not path or path == "" then
+      path = string.format(
+        "/api/v1/composition/clips/by-id/%s/thumbnail",
+        resolumeId(activeClip.id)
+      )
+    end
+    queueThumbnail({
+      clipId = activeClip.id,
+      lastUpdate = activeClip.lastUpdate,
+      priority = true,
+      debugName = string.format("active L%d", layer),
+      url = string.format("http://%s:%d%s", activeHost, activePort, path)
+    })
+  end
+  
+  local function ensureActiveLayerThumbnail(layer, activeClip)
+    if not activeClip then return end
+  
+    local cachedThumbnail = thumbnailCache[activeClip.id]
+    if cachedThumbnail and cachedThumbnail.thumbnailBase64 then
+      activeClip.thumbnailBase64 = cachedThumbnail.thumbnailBase64
+      updateLayerThumbnail(layer)
+      debugLog(string.format(
+        "Active layer L%d thumbnail restored from clip cache (%s)",
+        layer,
+        resolumeId(activeClip.id)
+      ))
+      return
+    end
+  
+    debugLog(string.format(
+      "Active layer L%d thumbnail requested by clip ID %s",
+      layer,
+      resolumeId(activeClip.id)
+    ))
+    fetchActiveClipThumbnail(layer, activeClip)
+  end
+  
   clearCompositionCache = function()
+    clearQueuedThumbnailRequests()
+    thumbnailCache = {}
+    thumbnailCacheOrder = {}
+    activeLayerClips = {}
     ResolumeCompositionCache.name = ""
     ResolumeCompositionCache.sourceDeckCount = 0
     ResolumeCompositionCache.sourceColumnCount = 0
     ResolumeCompositionCache.sourceLayerCount = 0
+    ResolumeCompositionCache.bypassed = false
+    ResolumeCompositionCache.bypassedId = nil
+    ResolumeCompositionCache.masterId = nil
+    ResolumeCompositionCache.speedId = nil
+    setToggleState("Composition Clear", "X", false, true)
+    setToggleState("Composition Bypass", "B", false, true)
+    setKnobState("Composition Master", 0, true)
+    setKnobState("Composition Speed", 0, true)
+    setToggleState("Global Play Backwards", "◀", false, true)
+    setToggleState("Global Pause", "Ⅱ", false, true)
+    setToggleState("Global Play Forward", "▶", false, true)
+  
+    for link = 1, 8 do
+      ResolumeCompositionCache.dashboardLinks[link] = nil
+      Controls["Dashboard Link Name " .. link].String = ""
+      setKnobState("Dashboard Link " .. link, 0, true)
+    end
   
     for deck = 1, deckCount do
       ResolumeCompositionCache.decks[deck] = nil
@@ -825,12 +1560,19 @@ if Controls then
   
     for column = 1, columnCount do
       ResolumeCompositionCache.columns[column] = nil
-      setToggleState("Column " .. column, "", false, true)
+      setToggleState("Column " .. column, "", false, true, "Missing")
     end
   
     for layer = 1, layerCount do
       ResolumeCompositionCache.layers[layer] = nil
       setToggleState("Layer " .. layer, "", false, true)
+      Controls["Layer Name " .. layer].String = ""
+      setToggleState("Layer Clear " .. layer, "X", false, true)
+      setToggleState("Layer Bypass " .. layer, "B", false, true)
+      setToggleState("Layer Solo " .. layer, "S", false, true)
+      setKnobState("Layer Master " .. layer, 0, true)
+      setKnobState("Layer Audio " .. layer, -192, true)
+      setKnobState("Layer Video " .. layer, 0, true)
       for column = 1, columnCount do
         setToggleState(string.format("Clip L%d C%d", layer, column), "", false, true)
       end
@@ -838,11 +1580,46 @@ if Controls then
   end
   
   applyCompositionSnapshot = function(composition)
+    clearQueuedThumbnailRequests()
     local decks = type(composition.decks) == "table" and composition.decks or {}
     local columns = type(composition.columns) == "table" and composition.columns or {}
     local layers = type(composition.layers) == "table" and composition.layers or {}
   
     ResolumeCompositionCache.name = displayName(composition, "")
+    ResolumeCompositionCache.bypassed = parameterValue(composition.bypassed, false) == true
+    ResolumeCompositionCache.bypassedId = composition.bypassed and composition.bypassed.id
+    ResolumeCompositionCache.master = parameterValue(composition.master, 1)
+    ResolumeCompositionCache.masterId = composition.master and composition.master.id
+    ResolumeCompositionCache.speed = parameterValue(composition.speed, 1)
+    ResolumeCompositionCache.speedId = composition.speed and composition.speed.id
+    setToggleState("Composition Clear", "X", false, false)
+    setToggleState("Composition Bypass", "B", ResolumeCompositionCache.bypassed, false)
+    setKnobState("Composition Master", ResolumeCompositionCache.master * 100, false)
+    setKnobState("Composition Speed", ResolumeCompositionCache.speed, false)
+    setToggleState("Global Play Backwards", "◀", false, false)
+    setToggleState("Global Pause", "Ⅱ", false, false)
+    setToggleState("Global Play Forward", "▶", false, false)
+  
+    local dashboard = type(composition.dashboard) == "table"
+      and composition.dashboard or {}
+    for link = 1, 8 do
+      local parameter = dashboard["Link " .. link]
+      if type(parameter) == "table" and parameter.id then
+        local cachedLink = ResolumeCompositionCache.dashboardLinks[link] or {}
+        cachedLink.id = parameter.id
+        cachedLink.value = clamp(tonumber(parameter.value) or 0, 0, 1)
+        cachedLink.name = parameter.view
+          and parameter.view.alternative_name
+          or ("Link " .. link)
+        ResolumeCompositionCache.dashboardLinks[link] = cachedLink
+        Controls["Dashboard Link Name " .. link].String = cachedLink.name
+        setKnobState("Dashboard Link " .. link, cachedLink.value, false)
+      else
+        ResolumeCompositionCache.dashboardLinks[link] = nil
+        Controls["Dashboard Link Name " .. link].String = "Not assigned"
+        setKnobState("Dashboard Link " .. link, 0, true)
+      end
+    end
     ResolumeCompositionCache.sourceDeckCount = #decks
     ResolumeCompositionCache.sourceColumnCount = #columns
     ResolumeCompositionCache.sourceLayerCount = #layers
@@ -875,11 +1652,12 @@ if Controls then
           "Column " .. column,
           cached.name,
           connectedStateIsActive(cached.connected),
-          false
+          false,
+          cached.connected
         )
       else
         ResolumeCompositionCache.columns[column] = nil
-        setToggleState("Column " .. column, "", false, true)
+        setToggleState("Column " .. column, "", false, true, "Missing")
       end
     end
   
@@ -889,10 +1667,65 @@ if Controls then
         local cached = ResolumeCompositionCache.layers[layer] or { clips = {} }
         cached.id = source.id
         cached.name = indexedDisplayName(source, "Layer " .. layer, layer)
-        cached.selected = parameterValue(source.selected, false) == true
+        cached.bypassed = parameterValue(source.bypassed, false) == true
+        cached.bypassedId = source.bypassed and source.bypassed.id
+        cached.solo = parameterValue(source.solo, false) == true
+        cached.soloId = source.solo and source.solo.id
+        cached.master = parameterValue(source.master, 1)
+        cached.masterId = source.master and source.master.id
+        cached.audio = parameterValue(source.audio and source.audio.volume, 0)
+        cached.audioId = source.audio and source.audio.volume and source.audio.volume.id
+        cached.video = parameterValue(source.video and source.video.opacity, 1)
+        cached.videoId = source.video and source.video.opacity and source.video.opacity.id
         cached.clips = cached.clips or {}
+  
+        local sourceActiveClip = source.active_clip
+        if type(sourceActiveClip) == "table" and sourceActiveClip.id then
+          local previousActive = activeLayerClips[layer]
+          local activeLastUpdate = sourceActiveClip.thumbnail
+            and sourceActiveClip.thumbnail.last_update
+            and tostring(sourceActiveClip.thumbnail.last_update)
+          local activeCache = thumbnailCache[sourceActiveClip.id]
+          local activeClip = {
+            id = sourceActiveClip.id,
+            name = displayName(sourceActiveClip, ""),
+            thumbnailPath = sourceActiveClip.thumbnail and sourceActiveClip.thumbnail.path,
+            lastUpdate = activeLastUpdate,
+            thumbnailBase64 = activeCache
+              and (activeLastUpdate == nil or activeCache.lastUpdate == activeLastUpdate)
+              and activeCache.thumbnailBase64
+              or (previousActive
+                and previousActive.id == sourceActiveClip.id
+                and (activeLastUpdate == nil
+                  or previousActive.lastUpdate == activeLastUpdate)
+                and previousActive.thumbnailBase64
+                or nil),
+            playDirectionId = sourceActiveClip.transport
+              and sourceActiveClip.transport.controls
+              and sourceActiveClip.transport.controls.playdirection
+              and sourceActiveClip.transport.controls.playdirection.id
+          }
+          activeLayerClips[layer] = activeClip
+          cached.activeClip = activeClip
+        else
+          -- A deck snapshot is allowed to omit active_clip transiently. Keep the
+          -- last confirmed layer state; clip disconnect feedback clears it.
+          cached.activeClip = activeLayerClips[layer]
+        end
         ResolumeCompositionCache.layers[layer] = cached
-        setToggleState("Layer " .. layer, cached.name, cached.selected, false)
+        setToggleState("Layer " .. layer, cached.name, false, false)
+        Controls["Layer Name " .. layer].String = cached.name
+        setToggleState("Layer Clear " .. layer, "X", false, false)
+        setToggleState("Layer Bypass " .. layer, "B", cached.bypassed, false)
+        setToggleState("Layer Solo " .. layer, "S", cached.solo, false)
+        setKnobState("Layer Master " .. layer, cached.master * 100, false)
+        setKnobState("Layer Audio " .. layer, cached.audio, false)
+        setKnobState("Layer Video " .. layer, cached.video * 100, false)
+  
+        -- The active layer clip is independent from the selected deck. Render
+        -- and fetch it before starting any ordinary grid thumbnail requests.
+        updateLayerThumbnail(layer)
+        ensureActiveLayerThumbnail(layer, cached.activeClip)
   
         local clips = type(source.clips) == "table" and source.clips or {}
         for column = 1, columnCount do
@@ -902,35 +1735,77 @@ if Controls then
   
           if populated then
             local cachedClip = cached.clips[column] or {}
+            local previousId = cachedClip.id
+            local previousLastUpdate = cachedClip.lastUpdate
+            local lastUpdate = clip.thumbnail and tostring(clip.thumbnail.last_update or "")
+            local sharedThumbnail = thumbnailCache[clip.id]
             cachedClip.id = clip.id
             cachedClip.name = displayName(clip, string.format("L%d C%d", layer, column))
             cachedClip.connected = connected
+            cachedClip.lastUpdate = lastUpdate
+            if sharedThumbnail and sharedThumbnail.lastUpdate == lastUpdate then
+              cachedClip.thumbnailBase64 = sharedThumbnail.thumbnailBase64
+            elseif previousId ~= clip.id or previousLastUpdate ~= lastUpdate then
+              cachedClip.thumbnailBase64 = nil
+            end
             cached.clips[column] = cachedClip
             setToggleState(
               string.format("Clip L%d C%d", layer, column),
               cachedClip.name,
               connectedStateIsActive(connected),
-              false
+              false,
+              connected
             )
+            setToggleThumbnail(
+              string.format("Clip L%d C%d", layer, column),
+              cachedClip.thumbnailBase64
+            )
+            if not cachedClip.thumbnailBase64 then
+              fetchClipThumbnail(layer, column, clip.id, lastUpdate)
+            end
           else
             cached.clips[column] = nil
+            local missingColumn = columns[column] == nil
             setToggleState(
               string.format("Clip L%d C%d", layer, column),
               "",
               false,
-              true
+              true,
+              missingColumn and "Missing" or "Empty"
             )
           end
         end
+        if cached.activeClip then
+          for column = 1, columnCount do
+            local visibleClip = cached.clips[column]
+            if visibleClip and visibleClip.id == cached.activeClip.id then
+              if visibleClip.thumbnailBase64 then
+                cached.activeClip.thumbnailBase64 = visibleClip.thumbnailBase64
+              end
+              break
+            end
+          end
+        end
+        updateLayerThumbnail(layer)
       else
+        activeLayerClips[layer] = nil
         ResolumeCompositionCache.layers[layer] = nil
         setToggleState("Layer " .. layer, "", false, true)
+        Controls["Layer Name " .. layer].String = ""
+        setToggleState("Layer Clear " .. layer, "X", false, true)
+        setToggleState("Layer Bypass " .. layer, "B", false, true)
+        setToggleState("Layer Solo " .. layer, "S", false, true)
+        setKnobState("Layer Master " .. layer, 0, true)
+        setKnobState("Layer Audio " .. layer, -192, true)
+        setKnobState("Layer Video " .. layer, 0, true)
         for column = 1, columnCount do
+          local missingColumn = columns[column] == nil
           setToggleState(
             string.format("Clip L%d C%d", layer, column),
             "",
             false,
-            true
+            true,
+            missingColumn and "Missing" or "Empty"
           )
         end
       end
@@ -968,20 +1843,65 @@ if Controls then
     local visibleColumns = math.min(ResolumeCompositionCache.sourceColumnCount, columnCount)
     local visibleLayers = math.min(ResolumeCompositionCache.sourceLayerCount, layerCount)
   
+    local compositionBypassPath = "/composition/bypassed"
+    desired[compositionBypassPath] = compositionBypassPath
+    if ResolumeCompositionCache.masterId then
+      desired["/composition/master"] =
+        "/parameter/by-id/" .. tostring(ResolumeCompositionCache.masterId)
+    end
+    if ResolumeCompositionCache.speedId then
+      desired["/composition/speed"] =
+        "/parameter/by-id/" .. tostring(ResolumeCompositionCache.speedId)
+    end
+    for link = 1, 8 do
+      local cachedLink = ResolumeCompositionCache.dashboardLinks[link]
+      if cachedLink and cachedLink.id then
+        desired["/composition/dashboard/link" .. link] =
+          "/parameter/by-id/" .. resolumeId(cachedLink.id)
+      end
+    end
+  
     for deck = 1, visibleDecks do
-      desired[string.format("/composition/decks/%d/select", deck)] = true
+      local path = string.format("/composition/decks/%d/select", deck)
+      desired[path] = path
     end
     for column = 1, visibleColumns do
-      desired[string.format("/composition/columns/%d/connect", column)] = true
+      local path = string.format("/composition/columns/%d/connect", column)
+      desired[path] = path
     end
     for layer = 1, visibleLayers do
-      desired[string.format("/composition/layers/%d/select", layer)] = true
+      local cachedLayer = ResolumeCompositionCache.layers[layer]
+      local namePath = string.format("/composition/layers/%d/name", layer)
+      local bypassPath = string.format("/composition/layers/%d/bypassed", layer)
+      local soloPath = string.format("/composition/layers/%d/solo", layer)
+      desired[namePath] = namePath
+      desired[bypassPath] = bypassPath
+      desired[soloPath] = soloPath
+      if cachedLayer and cachedLayer.masterId then
+        desired[string.format("/composition/layers/%d/master", layer)] =
+          "/parameter/by-id/" .. tostring(cachedLayer.masterId)
+      end
+      if cachedLayer and cachedLayer.audioId then
+        desired[string.format("/composition/layers/%d/audio/volume", layer)] =
+          "/parameter/by-id/" .. tostring(cachedLayer.audioId)
+      end
+      if cachedLayer and cachedLayer.videoId then
+        desired[string.format("/composition/layers/%d/video/opacity", layer)] =
+          "/parameter/by-id/" .. tostring(cachedLayer.videoId)
+      end
       for column = 1, visibleColumns do
-        desired[string.format(
+        local connectPath = string.format(
           "/composition/layers/%d/clips/%d/connect",
           layer,
           column
-        )] = true
+        )
+        desired[connectPath] = connectPath
+        local namePath = string.format(
+          "/composition/layers/%d/clips/%d/name",
+          layer,
+          column
+        )
+        desired[namePath] = namePath
       end
     end
   
@@ -992,16 +1912,16 @@ if Controls then
       end
     end
     for _, path in ipairs(obsolete) do
-      sendSubscription("unsubscribe", path)
+      sendSubscription("unsubscribe", subscribedFeedbackPaths[path])
       subscribedFeedbackPaths[path] = nil
     end
   
     local subscriptionCount = 0
-    for path in pairs(desired) do
+    for path, requestPath in pairs(desired) do
       subscriptionCount = subscriptionCount + 1
       if not subscribedFeedbackPaths[path] then
-        sendSubscription("subscribe", path)
-        subscribedFeedbackPaths[path] = true
+        sendSubscription("subscribe", requestPath)
+        subscribedFeedbackPaths[path] = requestPath
       end
     end
   
@@ -1016,8 +1936,66 @@ if Controls then
     return value == true or value == 1 or value == "true"
   end
   
-  applyParameterFeedback = function(path, value)
+  applyParameterFeedback = function(path, value, message)
     if not subscribedFeedbackPaths[path] then return end
+  
+    if path == "/composition/bypassed" then
+      ResolumeCompositionCache.bypassed = booleanFeedback(value)
+      setToggleState(
+        "Composition Bypass",
+        "B",
+        ResolumeCompositionCache.bypassed,
+        false
+      )
+      return
+    elseif path == "/composition/master" then
+      ResolumeCompositionCache.master = tonumber(value) or ResolumeCompositionCache.master
+      setKnobState("Composition Master", ResolumeCompositionCache.master * 100, false)
+      return
+    elseif path == "/composition/speed" then
+      ResolumeCompositionCache.speed = tonumber(value) or ResolumeCompositionCache.speed
+      setKnobState("Composition Speed", ResolumeCompositionCache.speed, false)
+      return
+    end
+  
+    local dashboardLink = tonumber(path:match("^/composition/dashboard/link(%d+)$"))
+    if dashboardLink and dashboardLink >= 1 and dashboardLink <= 8 then
+      local cachedLink = ResolumeCompositionCache.dashboardLinks[dashboardLink]
+      if not cachedLink then return end
+      cachedLink.value = clamp(tonumber(value) or cachedLink.value, 0, 1)
+      local view = type(message) == "table" and message.view or nil
+      if not view and type(value) == "table" then view = value.view end
+      if type(view) == "table"
+          and view.alternative_name ~= nil
+          and tostring(view.alternative_name) ~= "" then
+        cachedLink.name = tostring(view.alternative_name)
+        Controls["Dashboard Link Name " .. dashboardLink].String = cachedLink.name
+      end
+      setKnobState("Dashboard Link " .. dashboardLink, cachedLink.value, false)
+      return
+    end
+  
+    local nameLayer, nameColumn = path:match(
+      "^/composition/layers/(%d+)/clips/(%d+)/name$"
+    )
+    nameLayer = tonumber(nameLayer)
+    nameColumn = tonumber(nameColumn)
+    if nameLayer and nameColumn then
+      local cachedLayer = ResolumeCompositionCache.layers[nameLayer]
+      local cachedClip = cachedLayer and cachedLayer.clips[nameColumn]
+      if not cachedClip then return end
+  
+      cachedClip.name = tostring(value or "")
+      setToggleState(
+        string.format("Clip L%d C%d", nameLayer, nameColumn),
+        cachedClip.name,
+        connectedStateIsActive(cachedClip.connected),
+        false,
+        cachedClip.connected
+      )
+      updateLayerThumbnail(nameLayer)
+      return
+    end
   
     local deck = tonumber(path:match("^/composition/decks/(%d+)/select$"))
     if deck then
@@ -1045,25 +2023,59 @@ if Controls then
         "Column " .. column,
         cached.name,
         connectedStateIsActive(value),
-        false
+        false,
+        value
       )
       return
     end
   
-    local layer = tonumber(path:match("^/composition/layers/(%d+)/select$"))
-    if layer then
+    local layer, layerParameter = path:match(
+      "^/composition/layers/(%d+)/([%a]+)$"
+    )
+    layer = tonumber(layer)
+    if layer and (
+        layerParameter == "bypassed"
+        or layerParameter == "solo"
+        or layerParameter == "master"
+        or layerParameter == "name"
+      ) then
       local cached = ResolumeCompositionCache.layers[layer]
       if not cached then return end
-      local active = booleanFeedback(value)
-      if active then
-        for index, other in pairs(ResolumeCompositionCache.layers) do
-          other.selected = index == layer
-          setToggleState("Layer " .. index, other.name, other.selected, false)
-        end
+      if layerParameter == "name" then
+        cached.name = tostring(value or ""):gsub("#", tostring(layer))
+        Controls["Layer Name " .. layer].String = cached.name
+      elseif layerParameter == "bypassed" then
+        cached.bypassed = booleanFeedback(value)
+        setToggleState("Layer Bypass " .. layer, "B", cached.bypassed, false)
+      elseif layerParameter == "solo" then
+        cached.solo = booleanFeedback(value)
+        setToggleState("Layer Solo " .. layer, "S", cached.solo, false)
       else
-        cached.selected = false
-        setToggleState("Layer " .. layer, cached.name, false, false)
+        cached.master = tonumber(value) or cached.master
+        setKnobState("Layer Master " .. layer, cached.master * 100, false)
       end
+      return
+    end
+  
+    local audioLayer = tonumber(path:match(
+      "^/composition/layers/(%d+)/audio/volume$"
+    ))
+    if audioLayer then
+      local cached = ResolumeCompositionCache.layers[audioLayer]
+      if not cached then return end
+      cached.audio = tonumber(value) or cached.audio
+      setKnobState("Layer Audio " .. audioLayer, cached.audio, false)
+      return
+    end
+  
+    local videoLayer = tonumber(path:match(
+      "^/composition/layers/(%d+)/video/opacity$"
+    ))
+    if videoLayer then
+      local cached = ResolumeCompositionCache.layers[videoLayer]
+      if not cached then return end
+      cached.video = tonumber(value) or cached.video
+      setKnobState("Layer Video " .. videoLayer, cached.video * 100, false)
       return
     end
   
@@ -1079,12 +2091,335 @@ if Controls then
     if not cachedClip then return end
   
     cachedClip.connected = value
+    if connectedStateIsActive(value) then
+      local previousActive = activeLayerClips[clipLayer]
+      activeLayerClips[clipLayer] = {
+        id = cachedClip.id,
+        name = cachedClip.name,
+        lastUpdate = cachedClip.lastUpdate,
+        thumbnailBase64 = cachedClip.thumbnailBase64,
+        playDirectionId = previousActive
+          and previousActive.id == cachedClip.id
+          and previousActive.playDirectionId
+          or nil
+      }
+      cachedLayer.activeClip = activeLayerClips[clipLayer]
+    elseif cachedLayer.activeClip and cachedLayer.activeClip.id == cachedClip.id then
+      activeLayerClips[clipLayer] = nil
+      cachedLayer.activeClip = nil
+    end
     setToggleState(
       string.format("Clip L%d C%d", clipLayer, clipColumn),
       cachedClip.name,
       connectedStateIsActive(value),
-      false
+      false,
+      value
     )
+    updateLayerThumbnail(clipLayer)
+  end
+  
+  ResolumeLayerCommandTimers = {}
+  
+  local function sendParameterById(parameterId, value)
+    if connectionState ~= "connected" or not parameterId then return false end
+    ResolumeWebSocket:Write(json.encode({
+      action = "set",
+      parameter = "/parameter/by-id/" .. resolumeId(parameterId),
+      value = value
+    }))
+    return true
+  end
+  
+  local function queueLayerParameter(controlName, parameterId, value)
+    if connectionState ~= "connected" or not parameterId then
+      Controls["Status Text"].String = "Layer command unavailable while disconnected"
+      return
+    end
+  
+    local pending = ResolumeLayerCommandTimers[controlName]
+    if not pending then
+      pending = {
+        timer = Timer.New(),
+        parameterId = parameterId,
+        value = value,
+        scheduled = false,
+        dirty = false
+      }
+      ResolumeLayerCommandTimers[controlName] = pending
+      pending.timer.EventHandler = function()
+        pending.timer:Stop()
+        pending.scheduled = false
+        if pending.dirty then
+          pending.dirty = false
+          sendParameterById(pending.parameterId, pending.value)
+          pending.scheduled = true
+          pending.timer:Start(0.025)
+        end
+      end
+    end
+  
+    pending.parameterId = parameterId
+    pending.value = value
+    if pending.scheduled then
+      pending.dirty = true
+      return
+    end
+  
+    pending.dirty = false
+    sendParameterById(pending.parameterId, pending.value)
+    pending.scheduled = true
+    pending.timer:Start(0.025)
+  end
+  
+  for link = 1, 8 do
+    local linkIndex = link
+    Controls["Dashboard Link " .. linkIndex].EventHandler = function(control)
+      if applyingCacheFeedback then return end
+      local cachedLink = ResolumeCompositionCache.dashboardLinks[linkIndex]
+      if not cachedLink then
+        Controls["Status Text"].String = string.format(
+          "Dashboard Link %d is not assigned",
+          linkIndex
+        )
+        return
+      end
+  
+      local requested = clamp(control.Value, 0, 1)
+      setKnobState("Dashboard Link " .. linkIndex, cachedLink.value, false)
+      queueLayerParameter(
+        "Dashboard Link " .. linkIndex,
+        cachedLink.id,
+        requested
+      )
+    end
+  end
+  
+  local function postCompositionAction(path, failureLabel)
+    if connectionState ~= "connected" then
+      Controls["Status Text"].String = failureLabel .. " ignored while disconnected"
+      return
+    end
+    HttpClient.Post({
+      Url = string.format("http://%s:%d/api/v1%s", activeHost, activePort, path),
+      Data = "",
+      Headers = { ["Content-Type"] = "application/json" },
+      Timeout = 2,
+      EventHandler = function(_, code, _, errorMessage)
+        if code ~= 200 and code ~= 204 then
+          Controls["Status Text"].String = string.format(
+            "%s failed (HTTP %s): %s",
+            failureLabel,
+            tostring(code),
+            tostring(errorMessage)
+          )
+        end
+      end
+    })
+  end
+  
+  for deck = 1, deckCount do
+    local deckIndex = deck
+    Controls["Deck " .. deckIndex].EventHandler = function()
+      local cached = ResolumeCompositionCache.decks[deckIndex]
+      if not cached then return end
+  
+      setToggleState("Deck " .. deckIndex, cached.name, cached.selected, false)
+      postCompositionAction(
+        string.format("/composition/decks/%d/select", deckIndex),
+        string.format("Deck %d select", deckIndex)
+      )
+      scheduleDeckRefresh(0.5)
+    end
+  end
+  
+  for column = 1, columnCount do
+    local columnIndex = column
+    Controls["Column " .. columnIndex].EventHandler = function()
+      local cached = ResolumeCompositionCache.columns[columnIndex]
+      if not cached then return end
+  
+      setToggleState(
+        "Column " .. columnIndex,
+        cached.name,
+        connectedStateIsActive(cached.connected),
+        false,
+        cached.connected
+      )
+      postCompositionAction(
+        string.format("/composition/columns/%d/connect", columnIndex),
+        string.format("Column %d connect", columnIndex)
+      )
+    end
+  end
+  
+  for layer = 1, layerCount do
+    local layerIndex = layer
+    for column = 1, columnCount do
+      local columnIndex = column
+      local controlName = string.format("Clip L%d C%d", layerIndex, columnIndex)
+  
+      Controls[controlName].EventHandler = function()
+        local cachedLayer = ResolumeCompositionCache.layers[layerIndex]
+        local cachedClip = cachedLayer and cachedLayer.clips[columnIndex]
+        if not cachedClip then return end
+  
+        setToggleState(
+          controlName,
+          cachedClip.name,
+          connectedStateIsActive(cachedClip.connected),
+          false,
+          cachedClip.connected
+        )
+        postCompositionAction(
+          string.format(
+            "/composition/layers/%d/clips/%d/connect",
+            layerIndex,
+            columnIndex
+          ),
+          string.format("Clip L%d C%d connect", layerIndex, columnIndex)
+        )
+      end
+    end
+  end
+  
+  Controls["Composition Clear"].EventHandler = function()
+    setToggleState("Composition Clear", "X", false, false)
+    postCompositionAction("/composition/disconnect-all", "Composition clear")
+  end
+  
+  Controls["Composition Bypass"].EventHandler = function(control)
+    local requested = control.Boolean
+    setToggleState("Composition Bypass", "B", ResolumeCompositionCache.bypassed, false)
+    queueLayerParameter("Composition Bypass", ResolumeCompositionCache.bypassedId, requested)
+  end
+  
+  Controls["Composition Master"].EventHandler = function(control)
+    if applyingCacheFeedback then return end
+    local requested = control.Value / 100
+    setKnobState("Composition Master", ResolumeCompositionCache.master * 100, false)
+    queueLayerParameter("Composition Master", ResolumeCompositionCache.masterId, requested)
+  end
+  
+  Controls["Composition Speed"].EventHandler = function(control)
+    if applyingCacheFeedback then return end
+    local requested = control.Value
+    setKnobState("Composition Speed", ResolumeCompositionCache.speed, false)
+    queueLayerParameter("Composition Speed", ResolumeCompositionCache.speedId, requested)
+  end
+  
+  local function sendGlobalDirection(controlName, label, value)
+    setToggleState(controlName, label, false, false)
+    if connectionState ~= "connected" then
+      Controls["Status Text"].String = "Global transport ignored while disconnected"
+      return
+    end
+  
+    local commandCount = 0
+    for layer = 1, layerCount do
+      local cachedLayer = ResolumeCompositionCache.layers[layer]
+      local activeClip = cachedLayer and cachedLayer.activeClip
+      if activeClip and activeClip.playDirectionId then
+        if sendParameterById(activeClip.playDirectionId, value) then
+          commandCount = commandCount + 1
+        end
+      end
+    end
+  
+    if commandCount == 0 then
+      Controls["Status Text"].String = "Global transport unavailable: no active clip"
+    end
+  end
+  
+  Controls["Global Play Backwards"].EventHandler = function()
+    sendGlobalDirection("Global Play Backwards", "◀", "<")
+  end
+  Controls["Global Pause"].EventHandler = function()
+    sendGlobalDirection("Global Pause", "Ⅱ", "||")
+  end
+  Controls["Global Play Forward"].EventHandler = function()
+    sendGlobalDirection("Global Play Forward", "▶", ">")
+  end
+  
+  for layer = 1, layerCount do
+    local layerIndex = layer
+  
+    Controls["Layer Clear " .. layerIndex].EventHandler = function(control)
+      setToggleState("Layer Clear " .. layerIndex, "X", false, false)
+      if connectionState ~= "connected" then
+        Controls["Status Text"].String = "Clear ignored while disconnected"
+        return
+      end
+  
+      HttpClient.Post({
+        Url = string.format(
+          "http://%s:%d/api/v1/composition/layers/%d/clear",
+          activeHost,
+          activePort,
+          layerIndex
+        ),
+        Data = "",
+        Headers = { ["Content-Type"] = "application/json" },
+        Timeout = 2,
+        EventHandler = function(_, code, _, errorMessage)
+          if code ~= 200 and code ~= 204 then
+            Controls["Status Text"].String = string.format(
+              "Layer %d clear failed (HTTP %s): %s",
+              layerIndex,
+              tostring(code),
+              tostring(errorMessage)
+            )
+          end
+        end
+      })
+    end
+  
+    Controls["Layer Bypass " .. layerIndex].EventHandler = function(control)
+      local cached = ResolumeCompositionCache.layers[layerIndex]
+      if not cached then return end
+      local requested = control.Boolean
+      setToggleState("Layer Bypass " .. layerIndex, "B", cached.bypassed, false)
+      queueLayerParameter(
+        "Layer Bypass " .. layerIndex,
+        cached.bypassedId,
+        requested
+      )
+    end
+  
+    Controls["Layer Solo " .. layerIndex].EventHandler = function(control)
+      local cached = ResolumeCompositionCache.layers[layerIndex]
+      if not cached then return end
+      local requested = control.Boolean
+      setToggleState("Layer Solo " .. layerIndex, "S", cached.solo, false)
+      queueLayerParameter("Layer Solo " .. layerIndex, cached.soloId, requested)
+    end
+  
+    Controls["Layer Master " .. layerIndex].EventHandler = function(control)
+      if applyingCacheFeedback then return end
+      local cached = ResolumeCompositionCache.layers[layerIndex]
+      if not cached then return end
+      local requested = control.Value / 100
+      setKnobState("Layer Master " .. layerIndex, cached.master * 100, false)
+      queueLayerParameter("Layer Master " .. layerIndex, cached.masterId, requested)
+    end
+  
+  
+    Controls["Layer Audio " .. layerIndex].EventHandler = function(control)
+      if applyingCacheFeedback then return end
+      local cached = ResolumeCompositionCache.layers[layerIndex]
+      if not cached then return end
+      local requested = control.Value
+      setKnobState("Layer Audio " .. layerIndex, cached.audio, false)
+      queueLayerParameter("Layer Audio " .. layerIndex, cached.audioId, requested)
+    end
+  
+    Controls["Layer Video " .. layerIndex].EventHandler = function(control)
+      if applyingCacheFeedback then return end
+      local cached = ResolumeCompositionCache.layers[layerIndex]
+      if not cached then return end
+      local requested = control.Value / 100
+      setKnobState("Layer Video " .. layerIndex, cached.video * 100, false)
+      queueLayerParameter("Layer Video " .. layerIndex, cached.videoId, requested)
+    end
   end
   
   clearCompositionCache()

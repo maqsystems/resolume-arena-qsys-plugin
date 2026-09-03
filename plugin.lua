@@ -10,7 +10,7 @@ function GetPrettyName(props)
   return "Resolume Arena " .. PluginInfo.Version
 end
 
-PageNames = { "Composition", "Setup" }
+PageNames = { "Composition" }
 
 function GetPages(props)
   local pages = {}
