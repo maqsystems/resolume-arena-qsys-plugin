@@ -17,7 +17,7 @@ while exposing stable control pins for integration into a design or custom UCI.
 
 Download and open `ResolumeArena.qplug`. Q-SYS Plugin Helper automatically copies
 the plugin to the correct Q-SYS Designer plugin directory. Then add **Resolume
-Arena** from the User Components section.
+Arena** from the Plugins section.
 
 ## Resolume setup
 
