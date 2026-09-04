@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.0.81 — 2026-09-04
+
+### Changed
+
+- Consolidated connection health and diagnostic text into the reserved `Status`
+  indicator control.
+- Replaced `BuildVersion` with the Q-SYS-supported `Version` field throughout the
+  plugin and build workflow.
+- Exposed Layer Name and Dashboard Link Name controls as output pins.
+- Replaced spaces in internal control names with periods and moved every
+  `PrettyName` definition to the layout table.
+- Rendered the Status indicator as a rectangular text field.
+- Added explicit manufacturer metadata.
+
+### Compatibility
+
+- Internal control names changed in this release. Existing designs wired to the
+  `0.1.0` control pins must reconnect them using the new period-separated names.
+
+### Validation
+
+- Q-SYS Plugin Evaluation Script: zero errors with default properties and with
+  the maximum 715-control configuration.
+
 ## 0.1.0 — 2026-09-03
 
 First validated preview release.

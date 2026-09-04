@@ -147,11 +147,11 @@ if currentPage == "Composition" then
     14
   )
   addText("Designed by Mathieu Maquet (MAQ SYSTEMS)", { headerX + 74, headerY + 34 }, { headerWidth - 82, 14 }, COLORS.Mint, "Left", 8)
-  addText("version " .. PluginInfo.BuildVersion, { headerX + 74, headerY + 50 }, { headerWidth - 82, 12 }, COLORS.White, "Left", 7)
+  addText("version " .. PluginInfo.Version, { headerX + 74, headerY + 50 }, { headerWidth - 82, 12 }, COLORS.White, "Left", 7)
   local setupY = headerY + 80
   local setupHeight = 18
   addText("IP", { headerX + 8, setupY }, { 14, setupHeight }, COLORS.White, "Left", 8)
-  layout["IP Address"] = {
+  layout["IP.Address"] = {
     PrettyName = "Network~IP Address",
     Style = "Text",
     Position = { headerX + 26, setupY },
@@ -174,12 +174,17 @@ if currentPage == "Composition" then
     Padding = 0,
     CornerRadius = 2
   }
-  layout["Connection Status"] = {
-    PrettyName = "Status~Connection",
-    Style = "LED",
+  layout["Status"] = {
+    PrettyName = "Status",
+    Style = "Text",
+    TextBoxStyle = "Normal",
     Position = { headerX + 244, setupY },
     Size = { 77, setupHeight },
-    Color = COLORS.Mint
+    Color = COLORS.Mint,
+    TextColor = COLORS.Black,
+    Margin = 0,
+    Padding = 0,
+    CornerRadius = 2
   }
   addText("Status", { headerX + 202, setupY }, { 38, setupHeight }, COLORS.White, "Right", 8)
   table.insert(graphics, {
@@ -195,19 +200,19 @@ if currentPage == "Composition" then
   addText("Composition", { margin + 4, columnY }, { 320, pageTitleHeight }, COLORS.White, "Left", 10)
   local controlsY = columnY + pageTitleHeight
   local compositionControlHeight = columnHeight - pageTitleHeight
-  addToggle("Composition Clear", "X", { margin, controlsY }, { 36, compositionControlHeight }, "Composition Controls~Clear", COLORS.Mint)
-  addToggle("Composition Bypass", "B", { margin + 38, controlsY }, { 36, compositionControlHeight }, "Composition Controls~Bypass", COLORS.Mint)
+  addToggle("Composition.Clear", "X", { margin, controlsY }, { 36, compositionControlHeight }, "Composition Controls~Clear", COLORS.Mint)
+  addToggle("Composition.Bypass", "B", { margin + 38, controlsY }, { 36, compositionControlHeight }, "Composition Controls~Bypass", COLORS.Mint)
   addText("M", { margin + 76, controlsY }, { 12, compositionControlHeight }, COLORS.White, "Center", 8)
-  addPositionMeter("Composition Master", { margin + 88, controlsY }, { 62, compositionControlHeight }, "Composition Controls~Master", COLORS.Gray, "resolume-master")
+  addPositionMeter("Composition.Master", { margin + 88, controlsY }, { 62, compositionControlHeight }, "Composition Controls~Master", COLORS.Gray, "resolume-master")
   addText("S", { margin + 152, controlsY }, { 12, compositionControlHeight }, COLORS.White, "Center", 8)
-  addPositionMeter("Composition Speed", { margin + 164, controlsY }, { 64, compositionControlHeight }, "Composition Controls~Speed", COLORS.Gray, "resolume-speed")
-  addToggle("Global Play Backwards", "◀", { margin + 230, controlsY }, { 31, compositionControlHeight }, "Composition Controls~Global Play Backwards", COLORS.Mint)
-  addToggle("Global Pause", "Ⅱ", { margin + 263, controlsY }, { 31, compositionControlHeight }, "Composition Controls~Global Pause", COLORS.Mint)
-  addToggle("Global Play Forward", "▶", { margin + 296, controlsY }, { 28, compositionControlHeight }, "Composition Controls~Global Play Forward", COLORS.Mint)
+  addPositionMeter("Composition.Speed", { margin + 164, controlsY }, { 64, compositionControlHeight }, "Composition Controls~Speed", COLORS.Gray, "resolume-speed")
+  addToggle("Global.Play.Backwards", "◀", { margin + 230, controlsY }, { 31, compositionControlHeight }, "Composition Controls~Global Play Backwards", COLORS.Mint)
+  addToggle("Global.Pause", "Ⅱ", { margin + 263, controlsY }, { 31, compositionControlHeight }, "Composition Controls~Global Pause", COLORS.Mint)
+  addToggle("Global.Play.Forward", "▶", { margin + 296, controlsY }, { 28, compositionControlHeight }, "Composition Controls~Global Play Forward", COLORS.Mint)
 
   for column = 1, columnCount do
     addToggle(
-      "Column " .. column,
+      "Column." .. column,
       "Column " .. column,
       { gridX + (column - 1) * cellWidth, columnY },
       { cellWidth - gap, columnHeight },
@@ -232,7 +237,7 @@ if currentPage == "Composition" then
     local y = gridY + visualRow * clipHeight
 
     addToggle(
-      "Layer Clear " .. layer,
+      "Layer.Clear." .. layer,
       "X",
       { margin, y },
       { 36, 44 },
@@ -240,7 +245,7 @@ if currentPage == "Composition" then
       COLORS.Mint
     )
     addToggle(
-      "Layer Bypass " .. layer,
+      "Layer.Bypass." .. layer,
       "B",
       { margin + 38, y },
       { 36, 44 },
@@ -248,7 +253,7 @@ if currentPage == "Composition" then
       COLORS.Pink
     )
     addToggle(
-      "Layer Solo " .. layer,
+      "Layer.Solo." .. layer,
       "S",
       { margin + 76, y },
       { 36, 44 },
@@ -256,11 +261,11 @@ if currentPage == "Composition" then
       COLORS.Mint
     )
     addText("M", { margin + 114, y }, { 12, 14 }, COLORS.Gray, "Center", 8)
-    addPositionMeter("Layer Master " .. layer, { margin + 126, y }, { 102, 14 }, "Layers~Layer " .. layer .. "~Master", COLORS.Gray, "resolume-layer-master")
+    addPositionMeter("Layer.Master." .. layer, { margin + 126, y }, { 102, 14 }, "Layers~Layer " .. layer .. "~Master", COLORS.Gray, "resolume-layer-master")
     addText("A", { margin + 114, y + 15 }, { 12, 14 }, COLORS.Pink, "Center", 8)
-    addPositionMeter("Layer Audio " .. layer, { margin + 126, y + 15 }, { 102, 14 }, "Layers~Layer " .. layer .. "~Audio", COLORS.Pink, "resolume-layer-audio")
+    addPositionMeter("Layer.Audio." .. layer, { margin + 126, y + 15 }, { 102, 14 }, "Layers~Layer " .. layer .. "~Audio", COLORS.Pink, "resolume-layer-audio")
     addText("V", { margin + 114, y + 30 }, { 12, 14 }, COLORS.Mint, "Center", 8)
-    addPositionMeter("Layer Video " .. layer, { margin + 126, y + 30 }, { 102, 14 }, "Layers~Layer " .. layer .. "~Video", COLORS.MintDark, "resolume-layer-video")
+    addPositionMeter("Layer.Video." .. layer, { margin + 126, y + 30 }, { 102, 14 }, "Layers~Layer " .. layer .. "~Video", COLORS.MintDark, "resolume-layer-video")
     table.insert(graphics, {
       Type = "GroupBox",
       Text = "",
@@ -274,7 +279,7 @@ if currentPage == "Composition" then
       StrokeColor = COLORS.Gray,
       StrokeWidth = 0
     })
-    layout["Layer Name " .. layer] = {
+    layout["Layer.Name." .. layer] = {
       PrettyName = "Layers~Layer " .. layer .. "~Name",
       Style = "Text",
       IsReadOnly = true,
@@ -290,7 +295,7 @@ if currentPage == "Composition" then
       VTextAlign = "Center"
     }
     addToggle(
-      "Layer " .. layer,
+      "Layer." .. layer,
       "Layer " .. layer,
       { margin + labelWidth - 98, y },
       { 93, clipHeight - layerGap },
@@ -299,7 +304,7 @@ if currentPage == "Composition" then
     )
 
     for column = 1, columnCount do
-      local name = string.format("Clip L%d C%d", layer, column)
+      local name = string.format("Clip.L%d.C%d", layer, column)
       addToggle(
         name,
         string.format("L%d C%d", layer, column),
@@ -314,7 +319,7 @@ if currentPage == "Composition" then
   local dashboardCellWidth = math.floor(labelWidth / 8)
   for link = 1, 8 do
     local x = margin + (link - 1) * dashboardCellWidth
-    layout["Dashboard Link " .. link] = {
+    layout["Dashboard.Link." .. link] = {
       PrettyName = "Dashboard~Link " .. link,
       Style = "Knob",
       Position = { x + 5, decksY },
@@ -325,7 +330,7 @@ if currentPage == "Composition" then
       Font = "Roboto",
       FontSize = 9
     }
-    layout["Dashboard Link Name " .. link] = {
+    layout["Dashboard.Link.Name." .. link] = {
       PrettyName = "Dashboard~Link " .. link .. "~Name",
       Style = "Text",
       IsReadOnly = true,
@@ -345,7 +350,7 @@ if currentPage == "Composition" then
     local deckRow = math.floor((deck - 1) / deckColumns)
     local deckColumn = (deck - 1) % deckColumns
     addToggle(
-      "Deck " .. deck,
+      "Deck." .. deck,
       "Deck " .. deck,
       { gridX + deckColumn * cellWidth, decksY + deckRow * deckHeight },
       { cellWidth - gap, deckHeight - gap },

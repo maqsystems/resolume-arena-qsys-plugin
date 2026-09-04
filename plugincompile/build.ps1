@@ -18,9 +18,9 @@ if (-not (Test-Path -LiteralPath $compilerPath)) {
 
 
 $info = [IO.File]::ReadAllText($infoPath)
-$match = [regex]::Match($info, 'BuildVersion\s*=\s*"(\d+)\.(\d+)\.(\d+)\.(\d+)"')
+$match = [regex]::Match($info, 'Version\s*=\s*"(\d+)\.(\d+)\.(\d+)\.(\d+)"')
 if (-not $match.Success) {
-  throw "BuildVersion was not found in info.lua"
+  throw "Version was not found in info.lua"
 }
 
 $parts = @(
@@ -42,8 +42,8 @@ $buildVersion = $parts -join "."
 if ($Increment -ne "none") {
   $updatedInfo = [regex]::Replace(
     $info,
-    'BuildVersion\s*=\s*"\d+\.\d+\.\d+\.\d+"',
-    "BuildVersion = `"$buildVersion`"",
+    'Version\s*=\s*"\d+\.\d+\.\d+\.\d+"',
+    "Version = `"$buildVersion`"",
     1
   )
   [IO.File]::WriteAllText($infoPath, $updatedInfo, [Text.UTF8Encoding]::new($false))
@@ -76,4 +76,4 @@ if (-not $SkipInstall) {
   Write-Output "Installed: $installedPlugin"
 }
 
-Write-Output "Built $pluginName.qplug (BuildVersion $buildVersion)"
+Write-Output "Built $pluginName.qplug (Version $buildVersion)"

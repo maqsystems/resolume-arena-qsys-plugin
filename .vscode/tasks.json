@@ -24,7 +24,7 @@
   "inputs": [
     {
       "id": "versionIncrement",
-      "description": "BuildVersion increment",
+      "description": "Version increment",
       "type": "pickString",
       "options": [
         "development",
